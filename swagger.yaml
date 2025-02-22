@@ -20,6 +20,14 @@ externalDocs:
 tags:
   - name: root
     description: Local peer routines
+  - name: policies
+    description: Policy-oriented routines
+  - name: models
+    description: Model-oriented routines
+  - name: peers
+    description: Peer-oriented routines
+  - name: domains
+    description: Domain-oriented routines
 
 servers:
   - url: http://localhost
@@ -80,3 +88,468 @@ paths:
                 certificate: AAAAB3NzaC1yc2EAAAABIwAAAQEAq2A7hRGmdnm9tUDbO9IDSwBK6TbQa+PXYPCPy6rbTrTtw7PHkccKrpp0yVhp5HdEIcKr6pLlVDBfOLX9QUsyCOV0wzfjIJNlGEYsdlLJizHhbn2mUjvSAHQqZETYP81eFzLQNnPHt4EVVUh7VfDESU84KezmD5QlWpXLmvU31/yMf+Se8xhHTvKSCZIFImWwoG6mbUoWf9nzpIoaSjB+weqqUUmpaaasXVal72J+UX2B+2RPW3RcT0eOzQgqlJL3RKrTJvdsjE3JEAvGq3lGHSZXy28G3skua2SmVi/w4yCE6gbODqnTWlg7+wC604ydGXA8VJiS5ap43JXiUFFAaQ==
         '500':
           description: There is some internal error with the peer
+
+  #
+  # Entity API paths
+  #
+
+  /context/entity/policies:
+
+    get:
+      tags:
+        - policies
+      summary: Returns all policies, or a specific policy, optionally at some revision
+      description: >
+        If no name is provided, then by default this function returns the name, entity version,
+        and content type of all currently-provisioned policies. If a specific checkpoint is provided,
+        then the same detail is returned but only for the policies provisioned at that time.
+        An entity version may not be specified if a specific policy is not requested.
+
+        If a name is provided, then only details of that policy are returned. By default, the
+        content is returned for the named policy. Either the checkpoint or the entity version
+        (bot not both) may be provided to retrieve the policy at a specific revision.
+      operationId: getPolicies
+      parameters:
+        - in: query
+          name: policyName
+          schema:
+            type: string
+          required: false
+          description: Name of a specific policy to retrieve
+        - in: query
+          name: checkpoint
+          schema:
+            type: integer
+          required: false
+          description: Checkpoint to use in resolving policies (by default the latest is used)
+        - in: query
+          name: entityVersion
+          schema:
+            type: integer
+          required: false
+          description: Specific entity version to resolve (by default the latest is used)
+        - in: query
+          name: includeContent
+          schema:
+            type: boolean
+          required: false
+          description: If true, includes the content of the policy or policies 
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: './entity_schema.yaml#/components/schemas/PolicyList'
+              example:
+                - name: urn:tranquildata:policy:bootstrap
+                  entityVersion: 1
+                  contentType: application/xml+xacml
+                - name: ThirdPartyConsent
+                  entityVersion: 2
+                  contentType: application/json+xacml
+        '400':
+          description: A query parameter was invalid, an entity version was given without a named policy, or both an entity version and checkpoint were given
+        '404':
+          description: The named policy or checkpoint or entity version was unknown
+        '500':
+          description: There was some internal failure resolving the requested policies
+    
+    post:
+      tags:
+        - policies
+      summary: Provisions a new policy
+      operationId: addPolicy
+      requestBody:
+        description: >
+          A valid Tranquil Data policy encoded according to content type.
+          Content type is required.
+        required: true
+        content:
+          application/json+xacml:
+            schema:
+              $ref: './entity_schema.yaml#/components/schemas/PolicyJSONContent'
+          application/xml+xacml:
+            schema:
+              $ref: './entity_schema.yaml#/components/schemas/PolicyXMLContent'
+      responses:
+        '200':
+          description: OK
+        '400':
+          description: >
+            The policy was invalid or a policy with the same name already exists,
+            or content type did not match the policy
+        '500':
+          description: There was some internal failure to accept the policy
+
+    put:
+      tags:
+        - policies
+      summary: Creates or updates the policy
+      operationId: upsertPolicy
+      requestBody:
+        description: >
+          A valid Tranquil Data policy encoded according to content type.
+          Content type is required.
+        required: true
+        content:
+          application/json+xacml:
+            schema:
+              $ref: './entity_schema.yaml#/components/schemas/PolicyJSONContent'
+          application/xml+xacml:
+            schema:
+              $ref: './entity_schema.yaml#/components/schemas/PolicyXMLContent'
+      responses:
+        '200':
+          description: OK
+        '400':
+          description: The policy was invalid or content type did not match the policy
+        '500':
+          description: There was some internal failure to accept the policy
+
+  /context/entity/models:
+
+    get:
+      tags:
+        - models
+      summary: Returns all models, or a specific model, optionally at some revision
+      description: >
+        If no name is provided, then by default this function returns the name, entity version,
+        and content type of all currently-provisioned models. If a specific checkpoint is provided,
+        then the same detail is returned but only for the models provisioned at that time.
+        An entity version may not be specified if a specific model is not requested.
+
+        If a name is provided, then only details of that model are returned. By default, the
+        content is returned for the named model. Either the checkpoint or the entity version
+        (bot not both) may be provided to retrieve the model at a specific revision.
+      operationId: getModels
+      parameters:
+        - in: query
+          name: modelName
+          schema:
+            type: string
+          required: false
+          description: Name of a specific model to retrieve
+        - in: query
+          name: checkpoint
+          schema:
+            type: integer
+          required: false
+          description: Checkpoint to use in resolving models (by default the latest is used)
+        - in: query
+          name: entityVersion
+          schema:
+            type: integer
+          required: false
+          description: Specific entity version to resolve (by default the latest is used)
+        - in: query
+          name: includeContent
+          schema:
+            type: boolean
+          required: false
+          description: If true, includes the content of the model or models 
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: './entity_schema.yaml#/components/schemas/ModelList'
+              example:
+                - name: OperationsModel
+                  entityVersion: 1
+                  contentType: application/json
+                - name: SharingModel
+                  entityVersion: 2
+                  contentType: application/json
+        '400':
+          description: A query parameter was invalid, an entity version was given without a named model, or both an entity version and checkpoint were given
+        '404':
+          description: The named model or checkpoint or entity version was unknown
+        '500':
+          description: There was some internal failure resolving the requested models
+    
+    post:
+      tags:
+        - models
+      summary: Provisions a new model
+      operationId: addModel
+      requestBody:
+        description: >
+          A valid Tranquil Data model encoded according to content type.
+          Content type is required.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: './entity_schema.yaml#/components/schemas/ModelContent'
+      responses:
+        '200':
+          description: OK
+        '400':
+          description: >
+            The model was invalid or a model with the same name already exists,
+            or content type did not match the model
+        '500':
+          description: There was some internal failure to accept the model
+
+    put:
+      tags:
+        - models
+      summary: Creates or updates the model
+      operationId: upsertModel
+      requestBody:
+        description: >
+          A valid Tranquil Data model encoded according to content type.
+          Content type is required.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: './entity_schema.yaml#/components/schemas/ModelContent'
+      responses:
+        '200':
+          description: OK
+        '400':
+          description: The model was invalid or content type did not match the model
+        '500':
+          description: There was some internal failure to accept the model
+
+  /context/entity/peers:
+
+    get:
+      tags:
+        - peers
+      summary: Returns all peers, or a specific peer, optionally at some revision
+      description: >
+        If no identifier is provided, then by default this function returns the identifier, public
+        key certificate, and entity version of all currently-provisioned peers. If a specific
+        checkpoint is provided, then the same detail is returned but only for the peers provisioned at
+        that time. An entity version may not be specified if a specific peer is not requested.
+
+        If an identifier is provided, then only details of that peer are returned. By default, all
+        details about that peer are returned. Either the checkpoint or the entity version (bot not
+        both) may be provided to retrieve the peer at a specific revision.
+      operationId: getPeers
+      parameters:
+        - in: query
+          name: peerId
+          schema:
+            type: integer
+          required: false
+          description: Identifier for a specific peer to retrieve
+        - in: query
+          name: checkpoint
+          schema:
+            type: integer
+          required: false
+          description: Checkpoint to use in resolving peers (by default the latest is used)
+        - in: query
+          name: entityVersion
+          schema:
+            type: integer
+          required: false
+          description: Specific entity version to resolve (by default the latest is used)
+        - in: query
+          name: includeDetails
+          schema:
+            type: boolean
+          required: false
+          description: If true, includes all details of the peer or peers 
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: './entity_schema.yaml#/components/schemas/PeerList'
+              example:
+                - identifier: 1
+                  certificate: AAAAB3NzaC1yc2EAAAABIwAAAQEAq2A7hRGmdnm9tUDbO9IDSwBK6TbQa+PXYPCPy6rbTrTtw7PHkccKrpp0yVhp5HdEIcKr6pLlVDBfOLX9QUsyCOV0wzfjIJNlGEYsdlLJizHhbn2mUjvSAHQqZETYP81eFzLQNnPHt4EVVUh7VfDESU84KezmD5QlWpXLmvU31/yMf+Se8xhHTvKSCZIFImWwoG6mbUoWf9nzpIoaSjB+weqqUUmpaaasXVal72J+UX2B+2RPW3RcT0eOzQgqlJL3RKrTJvdsjE3JEAvGq3lGHSZXy28G3skua2SmVi/w4yCE6gbODqnTWlg7+wC604ydGXA8VJiS5ap43JXiUFFAaQ==
+                  entityVersion: 2
+                  policyName: AllPolicy
+                  properties:
+                    country: US
+        '400':
+          description: A query parameter was invalid, an entity version was given without an identified peer, or both an entity version and checkpoint were given
+        '404':
+          description: The identified peer or checkpoint or entity version was unknown
+        '500':
+          description: There was some internal failure resolving the requested peers
+
+    post:
+      tags:
+        - peers
+      summary: Provisions a new peer with the associated Public Key Certificate, returning the identifier for the new peer
+      operationId: addPeer
+      requestBody:
+        description: A PEM-encoded Public Key Certificate
+        required: true
+        content:
+          text/plain:
+            schema:
+              type: string
+            example: AAAAB3NzaC1yc2EAAAABIwAAAQEAq2A7hRGmdnm9tUDbO9IDSwBK6TbQa+PXYPCPy6rbTrTtw7PHkccKrpp0yVhp5HdEIcKr6pLlVDBfOLX9QUsyCOV0wzfjIJNlGEYsdlLJizHhbn2mUjvSAHQqZETYP81eFzLQNnPHt4EVVUh7VfDESU84KezmD5QlWpXLmvU31/yMf+Se8xhHTvKSCZIFImWwoG6mbUoWf9nzpIoaSjB+weqqUUmpaaasXVal72J+UX2B+2RPW3RcT0eOzQgqlJL3RKrTJvdsjE3JEAvGq3lGHSZXy28G3skua2SmVi/w4yCE6gbODqnTWlg7+wC604ydGXA8VJiS5ap43JXiUFFAaQ==
+      responses:
+        '200':
+          description: OK
+          content:
+            text/plain:
+              schema:
+                type: integer
+              example: 1
+        '400':
+          description: The Public Key Certificate was missing or invalid
+        '500':
+          description: There was some internal failure to provision the peer
+
+    put:
+      tags:
+        - peers
+      summary: Updates the associated policy, properties, or both for a given peer
+      operationId: updatePeer
+      parameters:
+        - in: query
+          name: peerId
+          schema:
+            type: integer
+          required: true
+          description: Identifier for a specific peer to update
+        - in: query
+          name: policyName
+          schema:
+            type: string
+          required: false
+          description: The name of a policy for a peer to be associated with
+      requestBody:
+        description: An optional set of properties to apply to the peer, where an empty value means that the named property should be removed 
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: './entity_schema.yaml#/components/schemas/PropertyMap'
+            example:
+              role: reporting
+              country: DE
+      responses:
+        '200':
+          description: OK
+        '400':
+          description: The peer identifier was missing or invalid or the policyName or properties were invalid
+        '404':
+          description: The identifier or the policyName was unknown
+        '500':
+          description: There was some internal failure to update the peer
+
+    delete:
+      tags:
+        - peers
+      summary: De-provisions the identified peer, shutting it down immediately if it is active
+      operationId: removePeer
+      parameters:
+        - in: query
+          name: peerId
+          schema:
+            type: integer
+          required: true
+          description: Identifier for a specific peer to deprovision
+      responses:
+        '200':
+          description: OK
+        '400':
+          description: The peer identifier was missing or invalid
+        '404':
+          description: The identifier was unknown
+        '500':
+          description: There was some internal failure to de-provision the peer
+
+  /context/entity/domains:
+
+    get:
+      tags:
+        - domains
+      summary: Returns all domains, or a specific domain, optionally at some revision
+      description: >
+        If no domain name is provided, then this function returns details of all
+        currently-provisioned domains. If a specific checkpoint is provided, then details are
+        returned for only the peers provisioned at that time. An entity version may not be specified
+        if a specific domain is not requested.
+
+        If a domain name is provided, then only details of that domain are returned. Either the
+        checkpoint or the entity version (bot not both) may be provided to retrieve the domain at a
+        specific revision.
+      operationId: getDomains
+      parameters:
+        - in: query
+          name: domainName
+          schema:
+            type: string
+          required: false
+          description: The name of a specific domain to resolve
+        - in: query
+          name: checkpoint
+          schema:
+            type: integer
+          required: false
+          description: Checkpoint to use in resolving domains (by default the latest is used)
+        - in: query
+          name: entityVersion
+          schema:
+            type: integer
+          required: false
+          description: Specific entity version to resolve (by default the latest is used)
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: './entity_schema.yaml#/components/schemas/DomainList'
+              example:
+                - name: operations
+                  entityVersion: 1
+                  policyName: HipaaSharing
+                  modelName: SharingModel
+                - name: reporting
+                  entityVersion: 3
+                  policyName: CustomerReporting
+        '400':
+          description: A query parameter was invalid, an entity version was given without an identified domain, or both an entity version and checkpoint were given
+        '404':
+          description: The named domain or checkpoint or entity version was unknown
+        '500':
+          description: There was some internal failure resolving the requested domains
+
+    put:
+      tags:
+        - domains
+      summary: Creates or updates the named domain, associating it with the policy named in the body of the message
+      operationId: updateDomain
+      parameters:
+        - in: query
+          name: domainName
+          schema:
+            type: string
+          required: true
+          description: The name of a specific domain to update
+        - in: query
+          name: policyName
+          schema:
+            type: string
+          required: true
+          description: The name of a policy for a domain to be associated with
+        - in: query
+          name: modelName
+          schema:
+            type: string
+          required: false
+          description: The optional name of a model for the domain to use
+      responses:
+        '200':
+          description: OK
+        '400':
+          description: The domain or policy name was missing or invalid, or the model name was invalid
+        '404':
+          description: The domain, policy, or model was unknown
+        '500':
+          description: There was some internal failure to update the domain
