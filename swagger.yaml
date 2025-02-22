@@ -93,119 +93,96 @@ paths:
   # Entity Context API paths
   #
 
-  /context/entity/policies:
+  /context/entity/domains:
 
     get:
       tags:
         - entity
-      summary: Returns all policies, or a specific policy, optionally at some revision
+      summary: Returns all domains, or a specific domain, optionally at some revision
       description: >
-        If no name is provided, then by default this function returns the name, entity version,
-        and content type of all currently-provisioned policies. If a specific checkpoint is provided,
-        then the same detail is returned but only for the policies provisioned at that time.
-        An entity version may not be specified if a specific policy is not requested.
+        If no domain name is provided, then this function returns details of all
+        currently-provisioned domains. If a specific checkpoint is provided, then details are
+        returned for only the peers provisioned at that time. An entity version may not be specified
+        if a specific domain is not requested.
 
-        If a name is provided, then only details of that policy are returned. By default, the
-        content is returned for the named policy. Either the checkpoint or the entity version
-        (bot not both) may be provided to retrieve the policy at a specific revision.
-      operationId: getPolicies
+        If a domain name is provided, then only details of that domain are returned. Either the
+        checkpoint or the entity version (bot not both) may be provided to retrieve the domain at a
+        specific revision.
+      operationId: getDomains
       parameters:
         - in: query
-          name: policyName
+          name: domainName
           schema:
             type: string
           required: false
-          description: Name of a specific policy to retrieve
+          description: The name of a specific domain to resolve
         - in: query
           name: checkpoint
           schema:
             type: integer
           required: false
-          description: Checkpoint to use in resolving policies (by default the latest is used)
+          description: Checkpoint to use in resolving domains (by default the latest is used)
         - in: query
           name: entityVersion
           schema:
             type: integer
           required: false
           description: Specific entity version to resolve (by default the latest is used)
-        - in: query
-          name: includeContent
-          schema:
-            type: boolean
-          required: false
-          description: If true, includes the content of the policy or policies 
       responses:
         '200':
           description: OK
           content:
             application/json:
               schema:
-                $ref: './entity_schema.yaml#/components/schemas/PolicyList'
+                $ref: './entity_schema.yaml#/components/schemas/DomainList'
               example:
-                - name: urn:tranquildata:policy:bootstrap
+                - name: operations
                   entityVersion: 1
-                  contentType: application/xml+xacml
-                - name: ThirdPartyConsent
-                  entityVersion: 2
-                  contentType: application/json+xacml
+                  policyName: HipaaSharing
+                  modelName: SharingModel
+                - name: reporting
+                  entityVersion: 3
+                  policyName: CustomerReporting
         '400':
-          description: A query parameter was invalid, an entity version was given without a named policy, or both an entity version and checkpoint were given
+          description: A query parameter was invalid, an entity version was given without an identified domain, or both an entity version and checkpoint were given
         '404':
-          description: The named policy or checkpoint or entity version was unknown
+          description: The named domain or checkpoint or entity version was unknown
         '500':
-          description: There was some internal failure resolving the requested policies
-    
-    post:
-      tags:
-        - entity
-      summary: Provisions a new policy
-      operationId: addPolicy
-      requestBody:
-        description: >
-          A valid Tranquil Data policy encoded according to content type.
-          Content type is required.
-        required: true
-        content:
-          application/json+xacml:
-            schema:
-              $ref: './entity_schema.yaml#/components/schemas/PolicyJSONContent'
-          application/xml+xacml:
-            schema:
-              $ref: './entity_schema.yaml#/components/schemas/PolicyXMLContent'
-      responses:
-        '200':
-          description: OK
-        '400':
-          description: >
-            The policy was invalid or a policy with the same name already exists,
-            or content type did not match the policy
-        '500':
-          description: There was some internal failure to accept the policy
+          description: There was some internal failure resolving the requested domains
 
     put:
       tags:
         - entity
-      summary: Creates or updates the policy
-      operationId: upsertPolicy
-      requestBody:
-        description: >
-          A valid Tranquil Data policy encoded according to content type.
-          Content type is required.
-        required: true
-        content:
-          application/json+xacml:
-            schema:
-              $ref: './entity_schema.yaml#/components/schemas/PolicyJSONContent'
-          application/xml+xacml:
-            schema:
-              $ref: './entity_schema.yaml#/components/schemas/PolicyXMLContent'
+      summary: Creates or updates the named domain, associating it with the policy named in the body of the message
+      operationId: updateDomain
+      parameters:
+        - in: query
+          name: domainName
+          schema:
+            type: string
+          required: true
+          description: The name of a specific domain to update
+        - in: query
+          name: policyName
+          schema:
+            type: string
+          required: true
+          description: The name of a policy for a domain to be associated with
+        - in: query
+          name: modelName
+          schema:
+            type: string
+          required: false
+          description: The optional name of a model for the domain to use
       responses:
         '200':
           description: OK
         '400':
-          description: The policy was invalid or content type did not match the policy
+          description: The domain or policy name was missing or invalid, or the model name was invalid
+        '404':
+          description: The domain, policy, or model was unknown
         '500':
-          description: There was some internal failure to accept the policy
+          description: There was some internal failure to update the domain
 
   /context/entity/models:
 
@@ -463,96 +440,119 @@ paths:
         '500':
           description: There was some internal failure to de-provision the peer
 
-  /context/entity/domains:
+  /context/entity/policies:
 
     get:
       tags:
         - entity
-      summary: Returns all domains, or a specific domain, optionally at some revision
+      summary: Returns all policies, or a specific policy, optionally at some revision
       description: >
-        If no domain name is provided, then this function returns details of all
-        currently-provisioned domains. If a specific checkpoint is provided, then details are
-        returned for only the peers provisioned at that time. An entity version may not be specified
-        if a specific domain is not requested.
+        If no name is provided, then by default this function returns the name, entity version,
+        and content type of all currently-provisioned policies. If a specific checkpoint is provided,
+        then the same detail is returned but only for the policies provisioned at that time.
+        An entity version may not be specified if a specific policy is not requested.
 
-        If a domain name is provided, then only details of that domain are returned. Either the
-        checkpoint or the entity version (bot not both) may be provided to retrieve the domain at a
-        specific revision.
-      operationId: getDomains
+        If a name is provided, then only details of that policy are returned. By default, the
+        content is returned for the named policy. Either the checkpoint or the entity version
+        (bot not both) may be provided to retrieve the policy at a specific revision.
+      operationId: getPolicies
       parameters:
         - in: query
-          name: domainName
+          name: policyName
           schema:
             type: string
           required: false
-          description: The name of a specific domain to resolve
+          description: Name of a specific policy to retrieve
         - in: query
           name: checkpoint
           schema:
             type: integer
           required: false
-          description: Checkpoint to use in resolving domains (by default the latest is used)
+          description: Checkpoint to use in resolving policies (by default the latest is used)
         - in: query
           name: entityVersion
           schema:
             type: integer
           required: false
           description: Specific entity version to resolve (by default the latest is used)
+        - in: query
+          name: includeContent
+          schema:
+            type: boolean
+          required: false
+          description: If true, includes the content of the policy or policies 
       responses:
         '200':
           description: OK
           content:
             application/json:
               schema:
-                $ref: './entity_schema.yaml#/components/schemas/DomainList'
+                $ref: './entity_schema.yaml#/components/schemas/PolicyList'
               example:
-                - name: operations
+                - name: urn:tranquildata:policy:bootstrap
                   entityVersion: 1
-                  policyName: HipaaSharing
-                  modelName: SharingModel
-                - name: reporting
-                  entityVersion: 3
-                  policyName: CustomerReporting
+                  contentType: application/xml+xacml
+                - name: ThirdPartyConsent
+                  entityVersion: 2
+                  contentType: application/json+xacml
         '400':
-          description: A query parameter was invalid, an entity version was given without an identified domain, or both an entity version and checkpoint were given
+          description: A query parameter was invalid, an entity version was given without a named policy, or both an entity version and checkpoint were given
         '404':
-          description: The named domain or checkpoint or entity version was unknown
+          description: The named policy or checkpoint or entity version was unknown
         '500':
-          description: There was some internal failure resolving the requested domains
-
-    put:
+          description: There was some internal failure resolving the requested policies
+    
+    post:
       tags:
         - entity
-      summary: Creates or updates the named domain, associating it with the policy named in the body of the message
-      operationId: updateDomain
-      parameters:
-        - in: query
-          name: domainName
-          schema:
-            type: string
-          required: true
-          description: The name of a specific domain to update
-        - in: query
-          name: policyName
-          schema:
-            type: string
-          required: true
-          description: The name of a policy for a domain to be associated with
-        - in: query
-          name: modelName
-          schema:
-            type: string
-          required: false
-          description: The optional name of a model for the domain to use
+      summary: Provisions a new policy
+      operationId: addPolicy
+      requestBody:
+        description: >
+          A valid Tranquil Data policy encoded according to content type.
+          Content type is required.
+        required: true
+        content:
+          application/json+xacml:
+            schema:
+              $ref: './entity_schema.yaml#/components/schemas/PolicyJSONContent'
+          application/xml+xacml:
+            schema:
+              $ref: './entity_schema.yaml#/components/schemas/PolicyXMLContent'
       responses:
         '200':
           description: OK
         '400':
-          description: The domain or policy name was missing or invalid, or the model name was invalid
-        '404':
-          description: The domain, policy, or model was unknown
+          description: >
+            The policy was invalid or a policy with the same name already exists,
+            or content type did not match the policy
         '500':
-          description: There was some internal failure to update the domain
+          description: There was some internal failure to accept the policy
+
+    put:
+      tags:
+        - entity
+      summary: Creates or updates the policy
+      operationId: upsertPolicy
+      requestBody:
+        description: >
+          A valid Tranquil Data policy encoded according to content type.
+          Content type is required.
+        required: true
+        content:
+          application/json+xacml:
+            schema:
+              $ref: './entity_schema.yaml#/components/schemas/PolicyJSONContent'
+          application/xml+xacml:
+            schema:
+              $ref: './entity_schema.yaml#/components/schemas/PolicyXMLContent'
+      responses:
+        '200':
+          description: OK
+        '400':
+          description: The policy was invalid or content type did not match the policy
+        '500':
+          description: There was some internal failure to accept the policy
 
   #
   # Datastore API paths
@@ -724,6 +724,160 @@ paths:
   #
   # Subject Context API paths
   #
+
+  /context/groups:
+
+    parameters:
+      - in: query
+        name: group
+        schema:
+          type: string
+        required: true
+        description: Identifier of a Group
+
+    get:
+      tags:
+        - subject
+      summary: Returns the context for the named group
+      operationId: getGroup
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: './subject_schema.yaml#/components/schemas/NamedGroup'
+              example:
+                groupName: Providers
+                properties:
+                  state: Massachusetts
+                members:
+                  - name: HealthCo
+                  - name: HealthOrg
+                    properties:
+                      pediatrics: true
+        '400':
+          description: No group was supplied
+        '404':
+          description: The requested group was unknown
+        '500':
+          description: An internal error occured attempting to retrieve or return the group's context
+
+    put:
+      tags:
+        - subject
+      summary: Provisions a new group, or updates an existing group
+      operationId: createOrUpdateGroup
+      requestBody:
+        description: Group definition to create or update
+        required: true
+        content:
+          application/json:
+              schema:
+                $ref: './subject_schema.yaml#/components/schemas/Group'
+              example:
+                properties:
+                  state: Massachusetts
+                members:
+                  - name: HealthCo
+                    properties:
+                      pediatrics: false
+      responses:
+        '200':
+          description: OK
+        '400':
+          description: The group was missing or the input was invalid
+        '500':
+          description: There was an internal error creating or updating the group
+
+  /context/groups/members:
+
+    parameters:
+      - in: query
+        name: group
+        schema:
+          type: string
+        required: true
+        description: Identifier of a Subject
+
+    get:
+      tags:
+        - subject
+      summary: Returns members of the given group
+      description: >
+        Returns the matching member, or any matches if multiple comma-separated values are provided for `member`.
+      operationId: getMembers
+      parameters:
+        - in: query
+          name: member
+          schema:
+            type: string
+          required: true
+          description: Name of one or more members
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: './subject_schema.yaml#/components/schemas/NamedMemberList'
+              example:
+                - groupName: Providers
+                  name: HealthCo
+                  properties:
+                    pediatrics: false
+        '400':
+          description: The group or member was missing
+        '404':
+          description: The group was unknown or there were no matching members
+        '500':
+          description: There was an internal error retreiving the group or its members, or generating the response
+
+    put:
+      tags:
+        - subject
+      summary: Creates or updates a member of the given group
+      operationId: createOrUpdateMember
+      requestBody:
+        description: Member content
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: './subject_schema.yaml#/components/schemas/Member'
+            example:
+              name: HealthOrg
+              properties:
+                pediatrics: true
+      responses:
+        '200':
+          description: OK
+        '400':
+          description: The group was missing or the input was invalid
+        '404':
+          description: The named group was unknown
+        '500':
+          description: There was an internal error creating or updating the member
+
+    delete:
+      tags:
+        - subject
+      summary: Deprecates one member of the given group
+      operationId: deprecateMember
+      parameters:
+        - in: query
+          name: member
+          schema:
+            type: string
+          required: true
+          description: Name of a member
+      responses:
+        '200':
+          description: OK
+        '400':
+          description: Neither group nor member was provided as a query parameter, or there were multiple values for member
+        '500':
+          description: An internal error kept the member from being deprecated
 
   /context/subjects:
 
@@ -951,160 +1105,6 @@ paths:
           description: Neither targetId nor type was provided as a query parameter, or there were multiple values for both targetId and type parameters
         '500':
           description: An internal error kept the relationship(s) from being deprecated
-
-  /context/groups:
-
-    parameters:
-      - in: query
-        name: group
-        schema:
-          type: string
-        required: true
-        description: Identifier of a Group
-
-    get:
-      tags:
-        - subject
-      summary: Returns the context for the named group
-      operationId: getGroup
-      responses:
-        '200':
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: './subject_schema.yaml#/components/schemas/NamedGroup'
-              example:
-                groupName: Providers
-                properties:
-                  state: Massachusetts
-                members:
-                  - name: HealthCo
-                  - name: HealthOrg
-                    properties:
-                      pediatrics: true
-        '400':
-          description: No group was supplied
-        '404':
-          description: The requested group was unknown
-        '500':
-          description: An internal error occured attempting to retrieve or return the group's context
-
-    put:
-      tags:
-        - subject
-      summary: Provisions a new group, or updates an existing group
-      operationId: createOrUpdateGroup
-      requestBody:
-        description: Group definition to create or update
-        required: true
-        content:
-          application/json:
-              schema:
-                $ref: './subject_schema.yaml#/components/schemas/Group'
-              example:
-                properties:
-                  state: Massachusetts
-                members:
-                  - name: HealthCo
-                    properties:
-                      pediatrics: false
-      responses:
-        '200':
-          description: OK
-        '400':
-          description: The group was missing or the input was invalid
-        '500':
-          description: There was an internal error creating or updating the group
-
-  /context/groups/members:
-
-    parameters:
-      - in: query
-        name: group
-        schema:
-          type: string
-        required: true
-        description: Identifier of a Subject
-
-    get:
-      tags:
-        - subject
-      summary: Returns members of the given group
-      description: >
-        Returns the matching member, or any matches if multiple comma-separated values are provided for `member`.
-      operationId: getMembers
-      parameters:
-        - in: query
-          name: member
-          schema:
-            type: string
-          required: true
-          description: Name of one or more members
-      responses:
-        '200':
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: './subject_schema.yaml#/components/schemas/NamedMemberList'
-              example:
-                - groupName: Providers
-                  name: HealthCo
-                  properties:
-                    pediatrics: false
-        '400':
-          description: The group or member was missing
-        '404':
-          description: The group was unknown or there were no matching members
-        '500':
-          description: There was an internal error retreiving the group or its members, or generating the response
-
-    put:
-      tags:
-        - subject
-      summary: Creates or updates a member of the given group
-      operationId: createOrUpdateMember
-      requestBody:
-        description: Member content
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: './subject_schema.yaml#/components/schemas/Member'
-            example:
-              name: HealthOrg
-              properties:
-                pediatrics: true
-      responses:
-        '200':
-          description: OK
-        '400':
-          description: The group was missing or the input was invalid
-        '404':
-          description: The named group was unknown
-        '500':
-          description: There was an internal error creating or updating the member
-
-    delete:
-      tags:
-        - subject
-      summary: Deprecates one member of the given group
-      operationId: deprecateMember
-      parameters:
-        - in: query
-          name: member
-          schema:
-            type: string
-          required: true
-          description: Name of a member
-      responses:
-        '200':
-          description: OK
-        '400':
-          description: Neither group nor member was provided as a query parameter, or there were multiple values for member
-        '500':
-          description: An internal error kept the member from being deprecated
 
   #
   # Decision API paths
