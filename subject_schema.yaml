@@ -1,0 +1,139 @@
+
+components:
+
+  schemas:
+
+    PropertyMap:
+      type: object
+      additionalProperties:
+        oneOf:
+          - type: string
+          - type: array
+            items:
+              type: string
+
+    Relationship:
+      type: object
+      properties:
+        targetId:
+          type: string
+        relationshipType:
+          type: string
+        policyName:
+          type: string
+        properties:
+          $ref: '#/components/schemas/PropertyMap'
+      required:
+        - targetId
+        - relationshipType
+
+    RelationshipList:
+      type: array
+      items:
+        $ref: '#/components/schemas/Relationship'
+
+    NamedRelationship:
+      allOf:
+        - type: object
+          properties:
+            subjectId:
+              type: string
+          required:
+            - subjectId
+        - $ref: '#/components/schemas/Relationship'
+
+    NamedRelationshipList:
+      type: array
+      items:
+        $ref: '#/components/schemas/NamedRelationship'
+
+    Subject:
+      type: object
+      properties:
+        properties:
+          $ref: '#/components/schemas/PropertyMap'
+        relationships:
+          $ref: '#/components/schemas/RelationshipList'
+
+    NamedSubject:
+      allOf:
+        - type: object
+          properties:
+            subjectId:
+              type: string
+          required:
+            - subjectId
+        - $ref: '#/components/schemas/Subject'
+
+    NamedSubjectList:
+      type: array
+      items:
+        $ref: '#/components/schemas/NamedSubject'
+
+    SubjectBatchResponse:
+      type: object
+      properties:
+        successCount:
+          type: integer
+        errors:
+          type: array
+          items:
+            type: object
+            properties:
+              offset:
+                type: integer
+              errorMsg:
+                type: string
+            required:
+              - offset
+              - errorMsg
+      required:
+        - successCount
+
+    Member:
+      type: object
+      properties:
+        name:
+          type: string
+        properties:
+          $ref: '#/components/schemas/PropertyMap'
+      required:
+        - name
+
+    MemberList:
+      type: array
+      items:
+        $ref: '#/components/schemas/Member'
+
+    NamedMember:
+      allOf:
+        - type: object
+          properties:
+            groupName:
+              type: string
+          required:
+            - groupName
+        - $ref: '#/components/schemas/Member'
+
+    NamedMemberList:
+      type: array
+      items:
+        $ref: '#/components/schemas/NamedMember'
+
+    Group:
+      type: object
+      properties:
+        members:
+          $ref: '#/components/schemas/MemberList'
+        properties:
+          $ref: '#/components/schemas/PropertyMap'
+
+    NamedGroup:
+      allOf:
+        - type: object
+          properties:
+            groupName:
+              type: string
+          required:
+            - groupName
+        - $ref: '#/components/schemas/Group'

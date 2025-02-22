@@ -19,17 +19,13 @@ externalDocs:
 
 tags:
   - name: root
-    description: Local peer routines
-  - name: policies
-    description: Policy-oriented routines
-  - name: models
-    description: Model-oriented routines
-  - name: peers
-    description: Peer-oriented routines
-  - name: domains
-    description: Domain-oriented routines
+    description: Routines to query status and state for a specific peer.
+  - name: entity
+    description: Routines for operating on consensus-driven, durable Entity Context.
   - name: datastore
-    description: Datastore-oriented routines
+    description: Routines for managing non-durable datastore exports.
+  - name: subject
+    description: Routines for operating on durable Subject Context.
 
 servers:
   - url: http://localhost
@@ -99,7 +95,7 @@ paths:
 
     get:
       tags:
-        - policies
+        - entity
       summary: Returns all policies, or a specific policy, optionally at some revision
       description: >
         If no name is provided, then by default this function returns the name, entity version,
@@ -159,7 +155,7 @@ paths:
     
     post:
       tags:
-        - policies
+        - entity
       summary: Provisions a new policy
       operationId: addPolicy
       requestBody:
@@ -186,7 +182,7 @@ paths:
 
     put:
       tags:
-        - policies
+        - entity
       summary: Creates or updates the policy
       operationId: upsertPolicy
       requestBody:
@@ -213,7 +209,7 @@ paths:
 
     get:
       tags:
-        - models
+        - entity
       summary: Returns all models, or a specific model, optionally at some revision
       description: >
         If no name is provided, then by default this function returns the name, entity version,
@@ -273,7 +269,7 @@ paths:
     
     post:
       tags:
-        - models
+        - entity
       summary: Provisions a new model
       operationId: addModel
       requestBody:
@@ -297,7 +293,7 @@ paths:
 
     put:
       tags:
-        - models
+        - entity
       summary: Creates or updates the model
       operationId: upsertModel
       requestBody:
@@ -321,7 +317,7 @@ paths:
 
     get:
       tags:
-        - peers
+        - entity
       summary: Returns all peers, or a specific peer, optionally at some revision
       description: >
         If no identifier is provided, then by default this function returns the identifier, public
@@ -381,7 +377,7 @@ paths:
 
     post:
       tags:
-        - peers
+        - entity
       summary: Provisions a new peer with the associated Public Key Certificate, returning the identifier for the new peer
       operationId: addPeer
       requestBody:
@@ -407,7 +403,7 @@ paths:
 
     put:
       tags:
-        - peers
+        - entity
       summary: Updates the associated policy, properties, or both for a given peer
       operationId: updatePeer
       parameters:
@@ -445,7 +441,7 @@ paths:
 
     delete:
       tags:
-        - peers
+        - entity
       summary: De-provisions the identified peer, shutting it down immediately if it is active
       operationId: removePeer
       parameters:
@@ -469,7 +465,7 @@ paths:
 
     get:
       tags:
-        - domains
+        - entity
       summary: Returns all domains, or a specific domain, optionally at some revision
       description: >
         If no domain name is provided, then this function returns details of all
@@ -524,7 +520,7 @@ paths:
 
     put:
       tags:
-        - domains
+        - entity
       summary: Creates or updates the named domain, associating it with the policy named in the body of the message
       operationId: updateDomain
       parameters:
@@ -722,3 +718,388 @@ paths:
           description: The named export is unknown, or the domain, peer, type and/or port do not match the named export
         '500':
           description: There was a failure to revoke the named export
+
+  #
+  # Subject Context API paths
+  #
+
+  /context/subjects:
+
+    parameters:
+      - in: query
+        name: subjectId
+        schema:
+          type: string
+        required: true
+        description: Identifier of a Subject
+
+    get:
+      tags:
+        - subject
+      summary: Returns the context for the named subject
+      operationId: getSubject
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: './subject_schema.yaml#/components/schemas/NamedSubject'
+              example:
+                subjectId: Patient/3
+                properties:
+                  state: Massachusetts
+                  dob: 08-27-2015
+                relationships:
+                  - targetId: Patient/2
+                    relationshipType: Parent
+        '400':
+          description: No subject was supplied
+        '404':
+          description: The requested subject was unknown
+        '500':
+          description: An internal error occured attempting to retrieve or return the subject's context
+
+    put:
+      tags:
+        - subject
+      summary: Provisions a new subject, or updates an existing subject
+      operationId: createOrUpdateSubject
+      requestBody:
+        description: Subject definition to create or update
+        required: true
+        content:
+          application/json:
+              schema:
+                $ref: './subject_schema.yaml#/components/schemas/Subject'
+              example:
+                properties:
+                  state: Massachusetts
+                  languages:
+                    - english
+                    - french
+                relationships:
+                  - targetId: BigCo
+                    relationshipType: employee
+                    properties:
+                      role: developer
+      responses:
+        '200':
+          description: OK
+        '400':
+          description: The subject was missing or the input was invalid
+        '404':
+          description: A policy named for a relationship was unknown
+        '500':
+          description: There was an internal error creating or updating the subject
+
+  /context/subjects/bulk:
+
+    post:
+      tags:
+        - subject
+      summary: Creates multiple subjects with one call
+      operationId: batchCreateSubjects
+      requestBody:
+        description: The subjects to create as a batch
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: './subject_schema.yaml#/components/schemas/NamedSubjectList'
+            example:
+              - subjectId: Patient/1
+              - subjectId: Patient/2
+                properties:
+                  state: massachusetts
+              - subjectId: Patient/3
+                relationships:
+                  - targetId: SomeCompany
+                    relationshipType: loyalty
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: './subject_schema.yaml#/components/schemas/SubjectBatchResponse'
+              example:
+                successCount: 2
+                errors:
+                  - offset: 1
+                    errorMsg: The subject Patient/2 already exists
+        '400':
+          description: The input was invalid
+        '500':
+          description: There was an error marshaling the response
+
+  /context/subjects/relationships:
+
+    parameters:
+      - in: query
+        name: subjectId
+        schema:
+          type: string
+        required: true
+        description: Identifier of a Subject
+        
+    get:
+      tags:
+        - subject
+      summary: Returns relationships of the given subject
+      description: >
+        If both targetId and type are omitted, then all relationships of the subject are returned. If exactly one value is provided for both
+        parameters, the the exact matching relationship is returned. If multiple, comma-separated, values are provided for one parameter
+        (e.g., type=friend,family) then all matching relationships are returned.
+      operationId: getRelationships
+      parameters:
+        - in: query
+          name: targetId
+          schema:
+            type: string
+          required: false
+          description: Identifier of a target
+        - in: query
+          name: type
+          schema:
+            type: string
+          required: false
+          description: Name of a relationship
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: './subject_schema.yaml#/components/schemas/NamedRelationshipList'
+              example:
+                - subjectId: Patient/3
+                  targetId: HealthCo
+                  relationshipType: provider
+                  properties:
+                    department: pediatrics
+                - subjectId: Patient/3
+                  targetId: PharmacyCo
+                  relationshipType: consent
+                  properties:
+                    categories:
+                      - prescriptions
+                      - alergies
+                      - conditions
+        '400':
+          description: The subject was missing or there were multiple values for both targetId and type parameters
+        '404':
+          description: The subject was unknown or there were no matching relationships
+        '500':
+          description: There was an internal error retreiving the subject or its relationships, or generating the response
+
+    put:
+      tags:
+        - subject
+      summary: Creates or updates a relationship of the given subject
+      operationId: createOrUpdateRelationship
+      requestBody:
+        description: Relationship content
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: './subject_schema.yaml#/components/schemas/Relationship'
+            example:
+              targetId: BillingApp
+              relationshipType: consent
+              properties:
+                categories:
+                  - encounters
+                  - prescriptions
+      responses:
+        '200':
+          description: OK
+        '400':
+          description: The subject was missing or the input was invalid
+        '404':
+          description: The identified subject was unknown
+        '500':
+          description: There was an internal error creating or updating the relationship
+
+    delete:
+      tags:
+        - subject
+      summary: Deprecates one or more relationships of the given subject
+      description: >
+        Follows the same query parameters rules as GET, with the exception that either targetId or type must be present with a value.
+      operationId: deprecateRelationship
+      parameters:
+        - in: query
+          name: targetId
+          schema:
+            type: string
+          required: false
+          description: Identifier of a target
+        - in: query
+          name: type
+          schema:
+            type: string
+          required: false
+          description: Name of a relationship
+      responses:
+        '200':
+          description: OK
+        '400':
+          description: Neither targetId nor type was provided as a query parameter, or there were multiple values for both targetId and type parameters
+        '500':
+          description: An internal error kept the relationship(s) from being deprecated
+
+  /context/groups:
+
+    parameters:
+      - in: query
+        name: group
+        schema:
+          type: string
+        required: true
+        description: Identifier of a Group
+
+    get:
+      tags:
+        - subject
+      summary: Returns the context for the named group
+      operationId: getGroup
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: './subject_schema.yaml#/components/schemas/NamedGroup'
+              example:
+                groupName: Providers
+                properties:
+                  state: Massachusetts
+                members:
+                  - name: HealthCo
+                  - name: HealthOrg
+                    properties:
+                      pediatrics: true
+        '400':
+          description: No group was supplied
+        '404':
+          description: The requested group was unknown
+        '500':
+          description: An internal error occured attempting to retrieve or return the group's context
+
+    put:
+      tags:
+        - subject
+      summary: Provisions a new group, or updates an existing group
+      operationId: createOrUpdateGroup
+      requestBody:
+        description: Group definition to create or update
+        required: true
+        content:
+          application/json:
+              schema:
+                $ref: './subject_schema.yaml#/components/schemas/Group'
+              example:
+                properties:
+                  state: Massachusetts
+                members:
+                  - name: HealthCo
+                    properties:
+                      pediatrics: false
+      responses:
+        '200':
+          description: OK
+        '400':
+          description: The group was missing or the input was invalid
+        '500':
+          description: There was an internal error creating or updating the group
+
+  /context/groups/members:
+
+    parameters:
+      - in: query
+        name: group
+        schema:
+          type: string
+        required: true
+        description: Identifier of a Subject
+
+    get:
+      tags:
+        - subject
+      summary: Returns members of the given group
+      description: >
+        Returns the matching member, or any matches if multiple comma-separated values are provided for `member`.
+      operationId: getMembers
+      parameters:
+        - in: query
+          name: member
+          schema:
+            type: string
+          required: true
+          description: Name of one or more members
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: './subject_schema.yaml#/components/schemas/NamedMemberList'
+              example:
+                - groupName: Providers
+                  name: HealthCo
+                  properties:
+                    pediatrics: false
+        '400':
+          description: The group or member was missing
+        '404':
+          description: The group was unknown or there were no matching members
+        '500':
+          description: There was an internal error retreiving the group or its members, or generating the response
+
+    put:
+      tags:
+        - subject
+      summary: Creates or updates a member of the given group
+      operationId: createOrUpdateMember
+      requestBody:
+        description: Member content
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: './subject_schema.yaml#/components/schemas/Member'
+            example:
+              name: HealthOrg
+              properties:
+                pediatrics: true
+      responses:
+        '200':
+          description: OK
+        '400':
+          description: The group was missing or the input was invalid
+        '404':
+          description: The named group was unknown
+        '500':
+          description: There was an internal error creating or updating the member
+
+    delete:
+      tags:
+        - subject
+      summary: Deprecates one member of the given group
+      operationId: deprecateMember
+      parameters:
+        - in: query
+          name: member
+          schema:
+            type: string
+          required: true
+          description: Name of a member
+      responses:
+        '200':
+          description: OK
+        '400':
+          description: Neither group nor member was provided as a query parameter, or there were multiple values for member
+        '500':
+          description: An internal error kept the member from being deprecated
