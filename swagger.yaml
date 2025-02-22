@@ -28,6 +28,8 @@ tags:
     description: Peer-oriented routines
   - name: domains
     description: Domain-oriented routines
+  - name: datastore
+    description: Datastore-oriented routines
 
 servers:
   - url: http://localhost
@@ -90,7 +92,7 @@ paths:
           description: There is some internal error with the peer
 
   #
-  # Entity API paths
+  # Entity Context API paths
   #
 
   /context/entity/policies:
@@ -553,3 +555,170 @@ paths:
           description: The domain, policy, or model was unknown
         '500':
           description: There was some internal failure to update the domain
+
+  #
+  # Datastore API paths
+  #
+
+  /datastore/exports:
+  
+    get:
+      tags:
+        - datastore
+      summary: Returns information about active exported datastores
+      operationId: getExportedDatastores
+      parameters:
+        - in: query
+          name: domainName
+          schema:
+            type: string
+          required: false
+          description: Return exports only in the named domain 
+        - in: query
+          name: peerId
+          schema:
+            type: integer
+          required: false
+          description: Return exports only at the identified peer
+        - in: query
+          name: exportName
+          schema:
+            type: string
+          required: false
+          description: Return only the named export
+        - in: query
+          name: includeConfiguration
+          schema:
+            type: boolean
+            default: false
+          required: false
+          description: If true, includes configuration details for each datastore export
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: './datastore_schema.yaml#/components/schemas/DatastoreExportList'
+              example:
+                - domainName: operations
+                  peerId: 1
+                  export:
+                    exportName: 60960483-2F97-4F6E-A570-EFE0E373FA67
+                    datastoreType: postgres
+                    datastorePort: 5432
+                    datastoreConfiguration:
+                      endpoint: "example.com:6789"
+                - domainName: reporting
+                  peerId: 1
+                  export:
+                    exportName: 6229DEEF-8357-4268-896D-0416E31F5CA9
+                    datastoreType: postgres
+                    datastorePort: 5432
+                    datastoreConfiguration:
+                      endpoint: "example.com:6789"
+                - domainName: reporting
+                  peerId: 2
+                  export:
+                    exportName: 19063B4E-C12B-4E5E-8181-B99C841DD594
+                    datastoreType: s3
+                    datastorePort: 8080
+                    datastoreCertificate: AAAAB3NzaC1yc2EAAAABIwAAAQEAq2A7hRGmdnm9tUDbO9IDSwBK6TbQa+PXYPCPy6rbTrTtw7PHkccKrpp0yVhp5HdEIcKr6pLlVDBfOLX9QUsyCOV0wzfjIJNlGEYsdlLJizHhbn2mUjvSAHQqZETYP81eFzLQNnPHt4EVVUh7VfDESU84KezmD5QlWpXLmvU31/yMf+Se8xhHTvKSCZIFImWwoG6mbUoWf9nzpIoaSjB+weqqUUmpaaasXVal72J+UX2B+2RPW3RcT0eOzQgqlJL3RKrTJvdsjE3JEAvGq3lGHSZXy28G3skua2SmVi/w4yCE6gbODqnTWlg7+wC604ydGXA8VJiS5ap43JXiUFFAaQ==
+                    datastoreConfiguration:
+                      endpoint: "example.com:8080"
+        '400':
+          description: A query parameter was mis-formatted
+        '404':
+          description: The domain, peer, or export is unknown
+
+    post:
+      tags:
+        - datastore
+      summary: Exports the datastore identified in the configuration, from the named domain at the identified peer
+      operationId: exportDatastore
+      parameters:
+        - in: query
+          name: domainName
+          schema:
+            type: string
+          required: true
+          description: Name of the domain where the datastore should be exported
+        - in: query
+          name: peerId
+          schema:
+            type: integer
+          required: true
+          description: Identifier of the peer where the datastore should be exported 
+      requestBody:
+        description: Datastore Configuration defining the export
+        required: true
+        content:
+          application/json:
+              schema:
+                $ref: './datastore_schema.yaml#/components/schemas/DatastoreExportConfiguration'
+              example:
+                datastoreType: postgres
+                endpoint: "example.com:6789"
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: './datastore_schema.yaml#/components/schemas/DatastoreExportDetails'
+              example:
+                exportName: 60960483-2F97-4F6E-A570-EFE0E373FA67
+                datastoreType: postgres
+                datastorePort: 5432
+        '400':
+          description: The format of the peer identifier or the Datastore Configuration is invalid
+        '404':
+          description: The identified peer or named domain is unknown
+        '500':
+          description: There was a failure to export the specified datastore
+
+    delete:
+      tags:
+        - datastore
+      summary: Revokes the named export, optionally validating the peer, domain, type and/or port
+      operationId: revokeExport
+      parameters:
+        - in: query
+          name: exportName
+          schema:
+            type: string
+          required: true
+          description: Name of the export to revoke
+        - in: query
+          name: domainName
+          schema:
+            type: string
+          required: false
+          description: Expected domain that contains the named export 
+        - in: query
+          name: peerId
+          schema:
+            type: integer
+          required: false
+          description: Expected peer that is hosting the named export
+        - in: query
+          name: datastoreType
+          schema:
+            type: string
+          required: false
+          description: Expected type of the named export
+        - in: query
+          name: datastorePort
+          schema:
+            type: integer
+          required: false
+          description: Expected port exposed by the named export
+      responses:
+        '200':
+          description: OK
+        '400':
+          description: The name of the export is missing or the peerId and/or datastorePort parameters are invalid
+        '404':
+          description: The named export is unknown, or the domain, peer, type and/or port do not match the named export
+        '500':
+          description: There was a failure to revoke the named export
