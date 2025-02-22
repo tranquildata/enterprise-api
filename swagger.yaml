@@ -26,6 +26,8 @@ tags:
     description: Routines for managing non-durable datastore exports.
   - name: subject
     description: Routines for operating on durable Subject Context.
+  - name: decision
+    description: Routines to request a decision about a given record or state of context.
 
 servers:
   - url: http://localhost
@@ -1103,3 +1105,80 @@ paths:
           description: Neither group nor member was provided as a query parameter, or there were multiple values for member
         '500':
           description: An internal error kept the member from being deprecated
+
+  #
+  # Decision API paths
+  #
+
+  /decision/query:
+
+    get:
+      tags:
+        - decision
+      summary: Returns an entry point for the decision interface
+      description: >
+        This implements a required component of the "XACML REST Profile Version 1.1", providing
+        programmatic access to the entry point for issuing a standard decision query.
+      operationId: getDecisionEntryPoint
+      responses:
+        '200':
+          description: OK
+          content:
+            application/xml:
+              schema:
+                $ref: './decision_schema.yaml#/components/schemas/EntryPoint'
+            application/json:
+              schema:
+                $ref: './decision_schema.yaml#/components/schemas/EntryPoint'
+        '406':
+          description: The accepted media type is unsupported
+
+    post:
+      tags:
+        - decision
+      summary: Returns the decision from the given domain for the request
+      description: >
+        This implements a required component of the "XACML REST Profile Version 1.1", providing
+        an endpoint for requesting a decision based on provided input. See the specification for
+        both the supported input and output formats. The "scope" (from in the specification) must
+        be a valid domain name.
+      operationId: evaluateDecisionRequest
+      parameters:
+        - in: query
+          name: scope
+          schema:
+            type: string
+          required: false
+          description: The name of the root scope used to evaluate this request
+      requestBody:
+        description: Request to evaluate
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+          application/xml:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+            application/xml:
+              schema:
+                type: object
+        '400':
+          description: The request was invalid
+          content:
+            application/text:
+              schema:
+                type: string
+        '404':
+          description: The provided scope is unknown or no scope was provided and the server required one
+        '406':
+          description: Either the provided or requested content type is unsupported or the scope was malformed
+        '415':
+          description: Either the provided content type or the requested return type is unsupported
