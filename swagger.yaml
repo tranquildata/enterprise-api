@@ -1,718 +1,1184 @@
----
-swagger: "2.0"
+# Copyright (c) 2022-2025, Tranquil Data, Inc. All rights reserved.
+
+openapi: 3.0.0
+
 info:
-  description: "This is a sample server Petstore server.  You can find out more about\
-    \ Swagger at [http://swagger.io](http://swagger.io) or on [irc.freenode.net, #swagger](http://swagger.io/irc/).\
-    \  For this sample, you can use the api key `special-key` to test the authorization\
-    \ filters."
-  version: "1.0.5"
-  title: "Swagger Petstore"
-  termsOfService: "http://swagger.io/terms/"
-  contact:
-    email: "apiteam@swagger.io"
+  title: Tranquil Data (TM) Enterprise Edition APIs
+  description: >
+    This is the complete API for the engine. It covers routines for provisioning
+    entity state, managing subject context, exporting datastore access, and checking
+    on the overall health of a service and its components.
+  version: 1.0.1
   license:
     name: "Apache 2.0"
     url: "http://www.apache.org/licenses/LICENSE-2.0.html"
-host: "petstore.swagger.io"
-basePath: "/v2"
-tags:
-- name: "pet"
-  description: "Everything about your Pets"
-  externalDocs:
-    description: "Find out more"
-    url: "http://swagger.io"
-- name: "store"
-  description: "Access to Petstore orders"
-- name: "user"
-  description: "Operations about user"
-  externalDocs:
-    description: "Find out more about our store"
-    url: "http://swagger.io"
-schemes:
-- "https"
-- "http"
-paths:
-  /pet/{petId}/uploadImage:
-    post:
-      tags:
-      - "pet"
-      summary: "uploads an image"
-      description: ""
-      operationId: "uploadFile"
-      consumes:
-      - "multipart/form-data"
-      produces:
-      - "application/json"
-      parameters:
-      - name: "petId"
-        in: "path"
-        description: "ID of pet to update"
-        required: true
-        type: "integer"
-        format: "int64"
-      - name: "additionalMetadata"
-        in: "formData"
-        description: "Additional data to pass to server"
-        required: false
-        type: "string"
-      - name: "file"
-        in: "formData"
-        description: "file to upload"
-        required: false
-        type: "file"
-      responses:
-        200:
-          description: "successful operation"
-          schema:
-            $ref: "#/definitions/ApiResponse"
-      security:
-      - petstore_auth:
-        - "write:pets"
-        - "read:pets"
-  /pet:
-    post:
-      tags:
-      - "pet"
-      summary: "Add a new pet to the store"
-      description: ""
-      operationId: "addPet"
-      consumes:
-      - "application/json"
-      - "application/xml"
-      produces:
-      - "application/json"
-      - "application/xml"
-      parameters:
-      - in: "body"
-        name: "body"
-        description: "Pet object that needs to be added to the store"
-        required: true
-        schema:
-          $ref: "#/definitions/Pet"
-      responses:
-        405:
-          description: "Invalid input"
-      security:
-      - petstore_auth:
-        - "write:pets"
-        - "read:pets"
-    put:
-      tags:
-      - "pet"
-      summary: "Update an existing pet"
-      description: ""
-      operationId: "updatePet"
-      consumes:
-      - "application/json"
-      - "application/xml"
-      produces:
-      - "application/json"
-      - "application/xml"
-      parameters:
-      - in: "body"
-        name: "body"
-        description: "Pet object that needs to be added to the store"
-        required: true
-        schema:
-          $ref: "#/definitions/Pet"
-      responses:
-        400:
-          description: "Invalid ID supplied"
-        404:
-          description: "Pet not found"
-        405:
-          description: "Validation exception"
-      security:
-      - petstore_auth:
-        - "write:pets"
-        - "read:pets"
-  /pet/findByStatus:
-    get:
-      tags:
-      - "pet"
-      summary: "Finds Pets by status"
-      description: "Multiple status values can be provided with comma separated strings"
-      operationId: "findPetsByStatus"
-      produces:
-      - "application/json"
-      - "application/xml"
-      parameters:
-      - name: "status"
-        in: "query"
-        description: "Status values that need to be considered for filter"
-        required: true
-        type: "array"
-        items:
-          type: "string"
-          enum:
-          - "available"
-          - "pending"
-          - "sold"
-          default: "available"
-        collectionFormat: "multi"
-      responses:
-        200:
-          description: "successful operation"
-          schema:
-            type: "array"
-            items:
-              $ref: "#/definitions/Pet"
-        400:
-          description: "Invalid status value"
-      security:
-      - petstore_auth:
-        - "write:pets"
-        - "read:pets"
-  /pet/findByTags:
-    get:
-      tags:
-      - "pet"
-      summary: "Finds Pets by tags"
-      description: "Multiple tags can be provided with comma separated strings. Use\
-        \ tag1, tag2, tag3 for testing."
-      operationId: "findPetsByTags"
-      produces:
-      - "application/json"
-      - "application/xml"
-      parameters:
-      - name: "tags"
-        in: "query"
-        description: "Tags to filter by"
-        required: true
-        type: "array"
-        items:
-          type: "string"
-        collectionFormat: "multi"
-      responses:
-        200:
-          description: "successful operation"
-          schema:
-            type: "array"
-            items:
-              $ref: "#/definitions/Pet"
-        400:
-          description: "Invalid tag value"
-      security:
-      - petstore_auth:
-        - "write:pets"
-        - "read:pets"
-      deprecated: true
-  /pet/{petId}:
-    get:
-      tags:
-      - "pet"
-      summary: "Find pet by ID"
-      description: "Returns a single pet"
-      operationId: "getPetById"
-      produces:
-      - "application/json"
-      - "application/xml"
-      parameters:
-      - name: "petId"
-        in: "path"
-        description: "ID of pet to return"
-        required: true
-        type: "integer"
-        format: "int64"
-      responses:
-        200:
-          description: "successful operation"
-          schema:
-            $ref: "#/definitions/Pet"
-        400:
-          description: "Invalid ID supplied"
-        404:
-          description: "Pet not found"
-      security:
-      - api_key: []
-    post:
-      tags:
-      - "pet"
-      summary: "Updates a pet in the store with form data"
-      description: ""
-      operationId: "updatePetWithForm"
-      consumes:
-      - "application/x-www-form-urlencoded"
-      produces:
-      - "application/json"
-      - "application/xml"
-      parameters:
-      - name: "petId"
-        in: "path"
-        description: "ID of pet that needs to be updated"
-        required: true
-        type: "integer"
-        format: "int64"
-      - name: "name"
-        in: "formData"
-        description: "Updated name of the pet"
-        required: false
-        type: "string"
-      - name: "status"
-        in: "formData"
-        description: "Updated status of the pet"
-        required: false
-        type: "string"
-      responses:
-        405:
-          description: "Invalid input"
-      security:
-      - petstore_auth:
-        - "write:pets"
-        - "read:pets"
-    delete:
-      tags:
-      - "pet"
-      summary: "Deletes a pet"
-      description: ""
-      operationId: "deletePet"
-      produces:
-      - "application/json"
-      - "application/xml"
-      parameters:
-      - name: "api_key"
-        in: "header"
-        required: false
-        type: "string"
-      - name: "petId"
-        in: "path"
-        description: "Pet id to delete"
-        required: true
-        type: "integer"
-        format: "int64"
-      responses:
-        400:
-          description: "Invalid ID supplied"
-        404:
-          description: "Pet not found"
-      security:
-      - petstore_auth:
-        - "write:pets"
-        - "read:pets"
-  /store/order:
-    post:
-      tags:
-      - "store"
-      summary: "Place an order for a pet"
-      description: ""
-      operationId: "placeOrder"
-      consumes:
-      - "application/json"
-      produces:
-      - "application/json"
-      - "application/xml"
-      parameters:
-      - in: "body"
-        name: "body"
-        description: "order placed for purchasing the pet"
-        required: true
-        schema:
-          $ref: "#/definitions/Order"
-      responses:
-        200:
-          description: "successful operation"
-          schema:
-            $ref: "#/definitions/Order"
-        400:
-          description: "Invalid Order"
-  /store/order/{orderId}:
-    get:
-      tags:
-      - "store"
-      summary: "Find purchase order by ID"
-      description: "For valid response try integer IDs with value >= 1 and <= 10.\
-        \ Other values will generated exceptions"
-      operationId: "getOrderById"
-      produces:
-      - "application/json"
-      - "application/xml"
-      parameters:
-      - name: "orderId"
-        in: "path"
-        description: "ID of pet that needs to be fetched"
-        required: true
-        type: "integer"
-        maximum: 10
-        minimum: 1
-        format: "int64"
-      responses:
-        200:
-          description: "successful operation"
-          schema:
-            $ref: "#/definitions/Order"
-        400:
-          description: "Invalid ID supplied"
-        404:
-          description: "Order not found"
-    delete:
-      tags:
-      - "store"
-      summary: "Delete purchase order by ID"
-      description: "For valid response try integer IDs with positive integer value.\
-        \ Negative or non-integer values will generate API errors"
-      operationId: "deleteOrder"
-      produces:
-      - "application/json"
-      - "application/xml"
-      parameters:
-      - name: "orderId"
-        in: "path"
-        description: "ID of the order that needs to be deleted"
-        required: true
-        type: "integer"
-        minimum: 1
-        format: "int64"
-      responses:
-        400:
-          description: "Invalid ID supplied"
-        404:
-          description: "Order not found"
-  /store/inventory:
-    get:
-      tags:
-      - "store"
-      summary: "Returns pet inventories by status"
-      description: "Returns a map of status codes to quantities"
-      operationId: "getInventory"
-      produces:
-      - "application/json"
-      parameters: []
-      responses:
-        200:
-          description: "successful operation"
-          schema:
-            type: "object"
-            additionalProperties:
-              type: "integer"
-              format: "int32"
-      security:
-      - api_key: []
-  /user/createWithArray:
-    post:
-      tags:
-      - "user"
-      summary: "Creates list of users with given input array"
-      description: ""
-      operationId: "createUsersWithArrayInput"
-      consumes:
-      - "application/json"
-      produces:
-      - "application/json"
-      - "application/xml"
-      parameters:
-      - in: "body"
-        name: "body"
-        description: "List of user object"
-        required: true
-        schema:
-          type: "array"
-          items:
-            $ref: "#/definitions/User"
-      responses:
-        default:
-          description: "successful operation"
-  /user/createWithList:
-    post:
-      tags:
-      - "user"
-      summary: "Creates list of users with given input array"
-      description: ""
-      operationId: "createUsersWithListInput"
-      consumes:
-      - "application/json"
-      produces:
-      - "application/json"
-      - "application/xml"
-      parameters:
-      - in: "body"
-        name: "body"
-        description: "List of user object"
-        required: true
-        schema:
-          type: "array"
-          items:
-            $ref: "#/definitions/User"
-      responses:
-        default:
-          description: "successful operation"
-  /user/{username}:
-    get:
-      tags:
-      - "user"
-      summary: "Get user by user name"
-      description: ""
-      operationId: "getUserByName"
-      produces:
-      - "application/json"
-      - "application/xml"
-      parameters:
-      - name: "username"
-        in: "path"
-        description: "The name that needs to be fetched. Use user1 for testing. "
-        required: true
-        type: "string"
-      responses:
-        200:
-          description: "successful operation"
-          schema:
-            $ref: "#/definitions/User"
-        400:
-          description: "Invalid username supplied"
-        404:
-          description: "User not found"
-    put:
-      tags:
-      - "user"
-      summary: "Updated user"
-      description: "This can only be done by the logged in user."
-      operationId: "updateUser"
-      consumes:
-      - "application/json"
-      produces:
-      - "application/json"
-      - "application/xml"
-      parameters:
-      - name: "username"
-        in: "path"
-        description: "name that need to be updated"
-        required: true
-        type: "string"
-      - in: "body"
-        name: "body"
-        description: "Updated user object"
-        required: true
-        schema:
-          $ref: "#/definitions/User"
-      responses:
-        400:
-          description: "Invalid user supplied"
-        404:
-          description: "User not found"
-    delete:
-      tags:
-      - "user"
-      summary: "Delete user"
-      description: "This can only be done by the logged in user."
-      operationId: "deleteUser"
-      produces:
-      - "application/json"
-      - "application/xml"
-      parameters:
-      - name: "username"
-        in: "path"
-        description: "The name that needs to be deleted"
-        required: true
-        type: "string"
-      responses:
-        400:
-          description: "Invalid username supplied"
-        404:
-          description: "User not found"
-  /user/login:
-    get:
-      tags:
-      - "user"
-      summary: "Logs user into the system"
-      description: ""
-      operationId: "loginUser"
-      produces:
-      - "application/json"
-      - "application/xml"
-      parameters:
-      - name: "username"
-        in: "query"
-        description: "The user name for login"
-        required: true
-        type: "string"
-      - name: "password"
-        in: "query"
-        description: "The password for login in clear text"
-        required: true
-        type: "string"
-      responses:
-        200:
-          description: "successful operation"
-          headers:
-            X-Expires-After:
-              type: "string"
-              format: "date-time"
-              description: "date in UTC when token expires"
-            X-Rate-Limit:
-              type: "integer"
-              format: "int32"
-              description: "calls per hour allowed by the user"
-          schema:
-            type: "string"
-        400:
-          description: "Invalid username/password supplied"
-  /user/logout:
-    get:
-      tags:
-      - "user"
-      summary: "Logs out current logged in user session"
-      description: ""
-      operationId: "logoutUser"
-      produces:
-      - "application/json"
-      - "application/xml"
-      parameters: []
-      responses:
-        default:
-          description: "successful operation"
-  /user:
-    post:
-      tags:
-      - "user"
-      summary: "Create user"
-      description: "This can only be done by the logged in user."
-      operationId: "createUser"
-      consumes:
-      - "application/json"
-      produces:
-      - "application/json"
-      - "application/xml"
-      parameters:
-      - in: "body"
-        name: "body"
-        description: "Created user object"
-        required: true
-        schema:
-          $ref: "#/definitions/User"
-      responses:
-        default:
-          description: "successful operation"
-securityDefinitions:
-  api_key:
-    type: "apiKey"
-    name: "api_key"
-    in: "header"
-  petstore_auth:
-    type: "oauth2"
-    authorizationUrl: "https://petstore.swagger.io/oauth/authorize"
-    flow: "implicit"
-    scopes:
-      read:pets: "read your pets"
-      write:pets: "modify pets in your account"
-definitions:
-  ApiResponse:
-    type: "object"
-    properties:
-      code:
-        type: "integer"
-        format: "int32"
-      type:
-        type: "string"
-      message:
-        type: "string"
-  Category:
-    type: "object"
-    properties:
-      id:
-        type: "integer"
-        format: "int64"
-      name:
-        type: "string"
-    xml:
-      name: "Category"
-  Pet:
-    type: "object"
-    required:
-    - "name"
-    - "photoUrls"
-    properties:
-      id:
-        type: "integer"
-        format: "int64"
-      category:
-        $ref: "#/definitions/Category"
-      name:
-        type: "string"
-        example: "doggie"
-      photoUrls:
-        type: "array"
-        xml:
-          wrapped: true
-        items:
-          type: "string"
-          xml:
-            name: "photoUrl"
-      tags:
-        type: "array"
-        xml:
-          wrapped: true
-        items:
-          xml:
-            name: "tag"
-          $ref: "#/definitions/Tag"
-      status:
-        type: "string"
-        description: "pet status in the store"
-        enum:
-        - "available"
-        - "pending"
-        - "sold"
-    xml:
-      name: "Pet"
-  Tag:
-    type: "object"
-    properties:
-      id:
-        type: "integer"
-        format: "int64"
-      name:
-        type: "string"
-    xml:
-      name: "Tag"
-  Order:
-    type: "object"
-    properties:
-      id:
-        type: "integer"
-        format: "int64"
-      petId:
-        type: "integer"
-        format: "int64"
-      quantity:
-        type: "integer"
-        format: "int32"
-      shipDate:
-        type: "string"
-        format: "date-time"
-      status:
-        type: "string"
-        description: "Order Status"
-        enum:
-        - "placed"
-        - "approved"
-        - "delivered"
-      complete:
-        type: "boolean"
-    xml:
-      name: "Order"
-  User:
-    type: "object"
-    properties:
-      id:
-        type: "integer"
-        format: "int64"
-      username:
-        type: "string"
-      firstName:
-        type: "string"
-      lastName:
-        type: "string"
-      email:
-        type: "string"
-      password:
-        type: "string"
-      phone:
-        type: "string"
-      userStatus:
-        type: "integer"
-        format: "int32"
-        description: "User Status"
-    xml:
-      name: "User"
+
 externalDocs:
-  description: "Find out more about Swagger"
-  url: "http://swagger.io"
+  description: "Find out more about Tranquil Data"
+  url: "https://tranquildata.com"
+
+tags:
+  - name: root
+    description: Routines to query status and state for a specific peer.
+  - name: entity
+    description: Routines for operating on consensus-driven, durable Entity Context.
+  - name: datastore
+    description: Routines for managing non-durable datastore exports.
+  - name: subject
+    description: Routines for operating on durable Subject Context.
+  - name: decision
+    description: Routines to request a decision about a given record or state of context.
+
+servers:
+  - url: http://localhost
+
+paths:
+
+  #
+  # Root API paths
+  #
+
+  /:
+
+    head:
+      tags:
+        - root
+      summary: Test that this peer is running and ready
+      operationId: checkPeer
+      responses:
+        '200':
+          description: The peer is available and responsive
+        '500':
+          description: There is some internal error with the peer
+
+    options:
+      tags:
+        - root
+      summary: Returns the names of all services exposed by this peer
+      operationId: getServices
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: './root_schema.yaml#/components/schemas/ServiceList'
+              example:
+                services:
+                  - context
+                  - datastores
+                  - metrics
+        '500':
+          description: There is some internal error with the peer
+
+    get:
+      tags:
+        - root
+      summary: Returns details of the responding peer
+      operationId: getPeerDetail
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: './root_schema.yaml#/components/schemas/PeerDetail'
+              example:
+                identifier: 1
+                certificate: AAAAB3NzaC1yc2EAAAABIwAAAQEAq2A7hRGmdnm9tUDbO9IDSwBK6TbQa+PXYPCPy6rbTrTtw7PHkccKrpp0yVhp5HdEIcKr6pLlVDBfOLX9QUsyCOV0wzfjIJNlGEYsdlLJizHhbn2mUjvSAHQqZETYP81eFzLQNnPHt4EVVUh7VfDESU84KezmD5QlWpXLmvU31/yMf+Se8xhHTvKSCZIFImWwoG6mbUoWf9nzpIoaSjB+weqqUUmpaaasXVal72J+UX2B+2RPW3RcT0eOzQgqlJL3RKrTJvdsjE3JEAvGq3lGHSZXy28G3skua2SmVi/w4yCE6gbODqnTWlg7+wC604ydGXA8VJiS5ap43JXiUFFAaQ==
+        '500':
+          description: There is some internal error with the peer
+
+  #
+  # Entity Context API paths
+  #
+
+  /context/entity/domains:
+
+    get:
+      tags:
+        - entity
+      summary: Returns all domains, or a specific domain, optionally at some revision
+      description: >
+        If no domain name is provided, then this function returns details of all
+        currently-provisioned domains. If a specific checkpoint is provided, then details are
+        returned for only the peers provisioned at that time. An entity version may not be specified
+        if a specific domain is not requested.
+
+        If a domain name is provided, then only details of that domain are returned. Either the
+        checkpoint or the entity version (bot not both) may be provided to retrieve the domain at a
+        specific revision.
+      operationId: getDomains
+      parameters:
+        - in: query
+          name: domainName
+          schema:
+            type: string
+          required: false
+          description: The name of a specific domain to resolve
+        - in: query
+          name: checkpoint
+          schema:
+            type: integer
+          required: false
+          description: Checkpoint to use in resolving domains (by default the latest is used)
+        - in: query
+          name: entityVersion
+          schema:
+            type: integer
+          required: false
+          description: Specific entity version to resolve (by default the latest is used)
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: './entity_schema.yaml#/components/schemas/DomainList'
+              example:
+                - name: operations
+                  entityVersion: 1
+                  policyName: HipaaSharing
+                  modelName: SharingModel
+                - name: reporting
+                  entityVersion: 3
+                  policyName: CustomerReporting
+        '400':
+          description: A query parameter was invalid, an entity version was given without an identified domain, or both an entity version and checkpoint were given
+        '404':
+          description: The named domain or checkpoint or entity version was unknown
+        '500':
+          description: There was some internal failure resolving the requested domains
+
+    put:
+      tags:
+        - entity
+      summary: Creates or updates the named domain, associating it with the policy named in the body of the message
+      operationId: updateDomain
+      parameters:
+        - in: query
+          name: domainName
+          schema:
+            type: string
+          required: true
+          description: The name of a specific domain to update
+        - in: query
+          name: policyName
+          schema:
+            type: string
+          required: true
+          description: The name of a policy for a domain to be associated with
+        - in: query
+          name: modelName
+          schema:
+            type: string
+          required: false
+          description: The optional name of a model for the domain to use
+      responses:
+        '200':
+          description: OK
+        '400':
+          description: The domain or policy name was missing or invalid, or the model name was invalid
+        '404':
+          description: The domain, policy, or model was unknown
+        '500':
+          description: There was some internal failure to update the domain
+
+  /context/entity/models:
+
+    get:
+      tags:
+        - entity
+      summary: Returns all models, or a specific model, optionally at some revision
+      description: >
+        If no name is provided, then by default this function returns the name, entity version,
+        and content type of all currently-provisioned models. If a specific checkpoint is provided,
+        then the same detail is returned but only for the models provisioned at that time.
+        An entity version may not be specified if a specific model is not requested.
+
+        If a name is provided, then only details of that model are returned. By default, the
+        content is returned for the named model. Either the checkpoint or the entity version
+        (bot not both) may be provided to retrieve the model at a specific revision.
+      operationId: getModels
+      parameters:
+        - in: query
+          name: modelName
+          schema:
+            type: string
+          required: false
+          description: Name of a specific model to retrieve
+        - in: query
+          name: checkpoint
+          schema:
+            type: integer
+          required: false
+          description: Checkpoint to use in resolving models (by default the latest is used)
+        - in: query
+          name: entityVersion
+          schema:
+            type: integer
+          required: false
+          description: Specific entity version to resolve (by default the latest is used)
+        - in: query
+          name: includeContent
+          schema:
+            type: boolean
+          required: false
+          description: If true, includes the content of the model or models 
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: './entity_schema.yaml#/components/schemas/ModelList'
+              example:
+                - name: OperationsModel
+                  entityVersion: 1
+                  contentType: application/json
+                - name: SharingModel
+                  entityVersion: 2
+                  contentType: application/json
+        '400':
+          description: A query parameter was invalid, an entity version was given without a named model, or both an entity version and checkpoint were given
+        '404':
+          description: The named model or checkpoint or entity version was unknown
+        '500':
+          description: There was some internal failure resolving the requested models
+    
+    post:
+      tags:
+        - entity
+      summary: Provisions a new model
+      operationId: addModel
+      requestBody:
+        description: >
+          A valid Tranquil Data model encoded according to content type.
+          Content type is required.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: './entity_schema.yaml#/components/schemas/ModelContent'
+      responses:
+        '200':
+          description: OK
+        '400':
+          description: >
+            The model was invalid or a model with the same name already exists,
+            or content type did not match the model
+        '500':
+          description: There was some internal failure to accept the model
+
+    put:
+      tags:
+        - entity
+      summary: Creates or updates the model
+      operationId: upsertModel
+      requestBody:
+        description: >
+          A valid Tranquil Data model encoded according to content type.
+          Content type is required.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: './entity_schema.yaml#/components/schemas/ModelContent'
+      responses:
+        '200':
+          description: OK
+        '400':
+          description: The model was invalid or content type did not match the model
+        '500':
+          description: There was some internal failure to accept the model
+
+  /context/entity/peers:
+
+    get:
+      tags:
+        - entity
+      summary: Returns all peers, or a specific peer, optionally at some revision
+      description: >
+        If no identifier is provided, then by default this function returns the identifier, public
+        key certificate, and entity version of all currently-provisioned peers. If a specific
+        checkpoint is provided, then the same detail is returned but only for the peers provisioned at
+        that time. An entity version may not be specified if a specific peer is not requested.
+
+        If an identifier is provided, then only details of that peer are returned. By default, all
+        details about that peer are returned. Either the checkpoint or the entity version (bot not
+        both) may be provided to retrieve the peer at a specific revision.
+      operationId: getPeers
+      parameters:
+        - in: query
+          name: peerId
+          schema:
+            type: integer
+          required: false
+          description: Identifier for a specific peer to retrieve
+        - in: query
+          name: checkpoint
+          schema:
+            type: integer
+          required: false
+          description: Checkpoint to use in resolving peers (by default the latest is used)
+        - in: query
+          name: entityVersion
+          schema:
+            type: integer
+          required: false
+          description: Specific entity version to resolve (by default the latest is used)
+        - in: query
+          name: includeDetails
+          schema:
+            type: boolean
+          required: false
+          description: If true, includes all details of the peer or peers 
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: './entity_schema.yaml#/components/schemas/PeerList'
+              example:
+                - identifier: 1
+                  certificate: AAAAB3NzaC1yc2EAAAABIwAAAQEAq2A7hRGmdnm9tUDbO9IDSwBK6TbQa+PXYPCPy6rbTrTtw7PHkccKrpp0yVhp5HdEIcKr6pLlVDBfOLX9QUsyCOV0wzfjIJNlGEYsdlLJizHhbn2mUjvSAHQqZETYP81eFzLQNnPHt4EVVUh7VfDESU84KezmD5QlWpXLmvU31/yMf+Se8xhHTvKSCZIFImWwoG6mbUoWf9nzpIoaSjB+weqqUUmpaaasXVal72J+UX2B+2RPW3RcT0eOzQgqlJL3RKrTJvdsjE3JEAvGq3lGHSZXy28G3skua2SmVi/w4yCE6gbODqnTWlg7+wC604ydGXA8VJiS5ap43JXiUFFAaQ==
+                  entityVersion: 2
+                  policyName: AllPolicy
+                  properties:
+                    country: US
+        '400':
+          description: A query parameter was invalid, an entity version was given without an identified peer, or both an entity version and checkpoint were given
+        '404':
+          description: The identified peer or checkpoint or entity version was unknown
+        '500':
+          description: There was some internal failure resolving the requested peers
+
+    post:
+      tags:
+        - entity
+      summary: Provisions a new peer with the associated Public Key Certificate, returning the identifier for the new peer
+      operationId: addPeer
+      requestBody:
+        description: A PEM-encoded Public Key Certificate
+        required: true
+        content:
+          text/plain:
+            schema:
+              type: string
+            example: AAAAB3NzaC1yc2EAAAABIwAAAQEAq2A7hRGmdnm9tUDbO9IDSwBK6TbQa+PXYPCPy6rbTrTtw7PHkccKrpp0yVhp5HdEIcKr6pLlVDBfOLX9QUsyCOV0wzfjIJNlGEYsdlLJizHhbn2mUjvSAHQqZETYP81eFzLQNnPHt4EVVUh7VfDESU84KezmD5QlWpXLmvU31/yMf+Se8xhHTvKSCZIFImWwoG6mbUoWf9nzpIoaSjB+weqqUUmpaaasXVal72J+UX2B+2RPW3RcT0eOzQgqlJL3RKrTJvdsjE3JEAvGq3lGHSZXy28G3skua2SmVi/w4yCE6gbODqnTWlg7+wC604ydGXA8VJiS5ap43JXiUFFAaQ==
+      responses:
+        '200':
+          description: OK
+          content:
+            text/plain:
+              schema:
+                type: integer
+              example: 1
+        '400':
+          description: The Public Key Certificate was missing or invalid
+        '500':
+          description: There was some internal failure to provision the peer
+
+    put:
+      tags:
+        - entity
+      summary: Updates the associated policy, properties, or both for a given peer
+      operationId: updatePeer
+      parameters:
+        - in: query
+          name: peerId
+          schema:
+            type: integer
+          required: true
+          description: Identifier for a specific peer to update
+        - in: query
+          name: policyName
+          schema:
+            type: string
+          required: false
+          description: The name of a policy for a peer to be associated with
+      requestBody:
+        description: An optional set of properties to apply to the peer, where an empty value means that the named property should be removed 
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: './entity_schema.yaml#/components/schemas/PropertyMap'
+            example:
+              role: reporting
+              country: DE
+      responses:
+        '200':
+          description: OK
+        '400':
+          description: The peer identifier was missing or invalid or the policyName or properties were invalid
+        '404':
+          description: The identifier or the policyName was unknown
+        '500':
+          description: There was some internal failure to update the peer
+
+    delete:
+      tags:
+        - entity
+      summary: De-provisions the identified peer, shutting it down immediately if it is active
+      operationId: removePeer
+      parameters:
+        - in: query
+          name: peerId
+          schema:
+            type: integer
+          required: true
+          description: Identifier for a specific peer to deprovision
+      responses:
+        '200':
+          description: OK
+        '400':
+          description: The peer identifier was missing or invalid
+        '404':
+          description: The identifier was unknown
+        '500':
+          description: There was some internal failure to de-provision the peer
+
+  /context/entity/policies:
+
+    get:
+      tags:
+        - entity
+      summary: Returns all policies, or a specific policy, optionally at some revision
+      description: >
+        If no name is provided, then by default this function returns the name, entity version,
+        and content type of all currently-provisioned policies. If a specific checkpoint is provided,
+        then the same detail is returned but only for the policies provisioned at that time.
+        An entity version may not be specified if a specific policy is not requested.
+
+        If a name is provided, then only details of that policy are returned. By default, the
+        content is returned for the named policy. Either the checkpoint or the entity version
+        (bot not both) may be provided to retrieve the policy at a specific revision.
+      operationId: getPolicies
+      parameters:
+        - in: query
+          name: policyName
+          schema:
+            type: string
+          required: false
+          description: Name of a specific policy to retrieve
+        - in: query
+          name: checkpoint
+          schema:
+            type: integer
+          required: false
+          description: Checkpoint to use in resolving policies (by default the latest is used)
+        - in: query
+          name: entityVersion
+          schema:
+            type: integer
+          required: false
+          description: Specific entity version to resolve (by default the latest is used)
+        - in: query
+          name: includeContent
+          schema:
+            type: boolean
+          required: false
+          description: If true, includes the content of the policy or policies 
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: './entity_schema.yaml#/components/schemas/PolicyList'
+              example:
+                - name: urn:tranquildata:policy:bootstrap
+                  entityVersion: 1
+                  contentType: application/xml+xacml
+                - name: ThirdPartyConsent
+                  entityVersion: 2
+                  contentType: application/json+xacml
+        '400':
+          description: A query parameter was invalid, an entity version was given without a named policy, or both an entity version and checkpoint were given
+        '404':
+          description: The named policy or checkpoint or entity version was unknown
+        '500':
+          description: There was some internal failure resolving the requested policies
+    
+    post:
+      tags:
+        - entity
+      summary: Provisions a new policy
+      operationId: addPolicy
+      requestBody:
+        description: >
+          A valid Tranquil Data policy encoded according to content type.
+          Content type is required.
+        required: true
+        content:
+          application/json+xacml:
+            schema:
+              $ref: './entity_schema.yaml#/components/schemas/PolicyJSONContent'
+          application/xml+xacml:
+            schema:
+              $ref: './entity_schema.yaml#/components/schemas/PolicyXMLContent'
+      responses:
+        '200':
+          description: OK
+        '400':
+          description: >
+            The policy was invalid or a policy with the same name already exists,
+            or content type did not match the policy
+        '500':
+          description: There was some internal failure to accept the policy
+
+    put:
+      tags:
+        - entity
+      summary: Creates or updates the policy
+      operationId: upsertPolicy
+      requestBody:
+        description: >
+          A valid Tranquil Data policy encoded according to content type.
+          Content type is required.
+        required: true
+        content:
+          application/json+xacml:
+            schema:
+              $ref: './entity_schema.yaml#/components/schemas/PolicyJSONContent'
+          application/xml+xacml:
+            schema:
+              $ref: './entity_schema.yaml#/components/schemas/PolicyXMLContent'
+      responses:
+        '200':
+          description: OK
+        '400':
+          description: The policy was invalid or content type did not match the policy
+        '500':
+          description: There was some internal failure to accept the policy
+
+  #
+  # Datastore API paths
+  #
+
+  /datastore/exports:
+  
+    get:
+      tags:
+        - datastore
+      summary: Returns information about active exported datastores
+      operationId: getExportedDatastores
+      parameters:
+        - in: query
+          name: domainName
+          schema:
+            type: string
+          required: false
+          description: Return exports only in the named domain 
+        - in: query
+          name: peerId
+          schema:
+            type: integer
+          required: false
+          description: Return exports only at the identified peer
+        - in: query
+          name: exportName
+          schema:
+            type: string
+          required: false
+          description: Return only the named export
+        - in: query
+          name: includeConfiguration
+          schema:
+            type: boolean
+            default: false
+          required: false
+          description: If true, includes configuration details for each datastore export
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: './datastore_schema.yaml#/components/schemas/DatastoreExportList'
+              example:
+                - domainName: operations
+                  peerId: 1
+                  export:
+                    exportName: 60960483-2F97-4F6E-A570-EFE0E373FA67
+                    datastoreType: postgres
+                    datastorePort: 5432
+                    datastoreConfiguration:
+                      endpoint: "example.com:6789"
+                - domainName: reporting
+                  peerId: 1
+                  export:
+                    exportName: 6229DEEF-8357-4268-896D-0416E31F5CA9
+                    datastoreType: postgres
+                    datastorePort: 5432
+                    datastoreConfiguration:
+                      endpoint: "example.com:6789"
+                - domainName: reporting
+                  peerId: 2
+                  export:
+                    exportName: 19063B4E-C12B-4E5E-8181-B99C841DD594
+                    datastoreType: s3
+                    datastorePort: 8080
+                    datastoreCertificate: AAAAB3NzaC1yc2EAAAABIwAAAQEAq2A7hRGmdnm9tUDbO9IDSwBK6TbQa+PXYPCPy6rbTrTtw7PHkccKrpp0yVhp5HdEIcKr6pLlVDBfOLX9QUsyCOV0wzfjIJNlGEYsdlLJizHhbn2mUjvSAHQqZETYP81eFzLQNnPHt4EVVUh7VfDESU84KezmD5QlWpXLmvU31/yMf+Se8xhHTvKSCZIFImWwoG6mbUoWf9nzpIoaSjB+weqqUUmpaaasXVal72J+UX2B+2RPW3RcT0eOzQgqlJL3RKrTJvdsjE3JEAvGq3lGHSZXy28G3skua2SmVi/w4yCE6gbODqnTWlg7+wC604ydGXA8VJiS5ap43JXiUFFAaQ==
+                    datastoreConfiguration:
+                      endpoint: "example.com:8080"
+        '400':
+          description: A query parameter was mis-formatted
+        '404':
+          description: The domain, peer, or export is unknown
+
+    post:
+      tags:
+        - datastore
+      summary: Exports the datastore identified in the configuration, from the named domain at the identified peer
+      operationId: exportDatastore
+      parameters:
+        - in: query
+          name: domainName
+          schema:
+            type: string
+          required: true
+          description: Name of the domain where the datastore should be exported
+        - in: query
+          name: peerId
+          schema:
+            type: integer
+          required: true
+          description: Identifier of the peer where the datastore should be exported 
+      requestBody:
+        description: Datastore Configuration defining the export
+        required: true
+        content:
+          application/json:
+              schema:
+                $ref: './datastore_schema.yaml#/components/schemas/DatastoreExportConfiguration'
+              example:
+                datastoreType: postgres
+                endpoint: "example.com:6789"
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: './datastore_schema.yaml#/components/schemas/DatastoreExportDetails'
+              example:
+                exportName: 60960483-2F97-4F6E-A570-EFE0E373FA67
+                datastoreType: postgres
+                datastorePort: 5432
+        '400':
+          description: The format of the peer identifier or the Datastore Configuration is invalid
+        '404':
+          description: The identified peer or named domain is unknown
+        '500':
+          description: There was a failure to export the specified datastore
+
+    delete:
+      tags:
+        - datastore
+      summary: Revokes the named export, optionally validating the peer, domain, type and/or port
+      operationId: revokeExport
+      parameters:
+        - in: query
+          name: exportName
+          schema:
+            type: string
+          required: true
+          description: Name of the export to revoke
+        - in: query
+          name: domainName
+          schema:
+            type: string
+          required: false
+          description: Expected domain that contains the named export 
+        - in: query
+          name: peerId
+          schema:
+            type: integer
+          required: false
+          description: Expected peer that is hosting the named export
+        - in: query
+          name: datastoreType
+          schema:
+            type: string
+          required: false
+          description: Expected type of the named export
+        - in: query
+          name: datastorePort
+          schema:
+            type: integer
+          required: false
+          description: Expected port exposed by the named export
+      responses:
+        '200':
+          description: OK
+        '400':
+          description: The name of the export is missing or the peerId and/or datastorePort parameters are invalid
+        '404':
+          description: The named export is unknown, or the domain, peer, type and/or port do not match the named export
+        '500':
+          description: There was a failure to revoke the named export
+
+  #
+  # Subject Context API paths
+  #
+
+  /context/groups:
+
+    parameters:
+      - in: query
+        name: group
+        schema:
+          type: string
+        required: true
+        description: Identifier of a Group
+
+    get:
+      tags:
+        - subject
+      summary: Returns the context for the named group
+      operationId: getGroup
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: './subject_schema.yaml#/components/schemas/NamedGroup'
+              example:
+                groupName: Providers
+                properties:
+                  state: Massachusetts
+                members:
+                  - name: HealthCo
+                  - name: HealthOrg
+                    properties:
+                      pediatrics: true
+        '400':
+          description: No group was supplied
+        '404':
+          description: The requested group was unknown
+        '500':
+          description: An internal error occured attempting to retrieve or return the group's context
+
+    put:
+      tags:
+        - subject
+      summary: Provisions a new group, or updates an existing group
+      operationId: createOrUpdateGroup
+      requestBody:
+        description: Group definition to create or update
+        required: true
+        content:
+          application/json:
+              schema:
+                $ref: './subject_schema.yaml#/components/schemas/Group'
+              example:
+                properties:
+                  state: Massachusetts
+                members:
+                  - name: HealthCo
+                    properties:
+                      pediatrics: false
+      responses:
+        '200':
+          description: OK
+        '400':
+          description: The group was missing or the input was invalid
+        '500':
+          description: There was an internal error creating or updating the group
+
+  /context/groups/members:
+
+    parameters:
+      - in: query
+        name: group
+        schema:
+          type: string
+        required: true
+        description: Identifier of a Subject
+
+    get:
+      tags:
+        - subject
+      summary: Returns members of the given group
+      description: >
+        Returns the matching member, or any matches if multiple comma-separated values are provided for `member`.
+      operationId: getMembers
+      parameters:
+        - in: query
+          name: member
+          schema:
+            type: string
+          required: true
+          description: Name of one or more members
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: './subject_schema.yaml#/components/schemas/NamedMemberList'
+              example:
+                - groupName: Providers
+                  name: HealthCo
+                  properties:
+                    pediatrics: false
+        '400':
+          description: The group or member was missing
+        '404':
+          description: The group was unknown or there were no matching members
+        '500':
+          description: There was an internal error retreiving the group or its members, or generating the response
+
+    put:
+      tags:
+        - subject
+      summary: Creates or updates a member of the given group
+      operationId: createOrUpdateMember
+      requestBody:
+        description: Member content
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: './subject_schema.yaml#/components/schemas/Member'
+            example:
+              name: HealthOrg
+              properties:
+                pediatrics: true
+      responses:
+        '200':
+          description: OK
+        '400':
+          description: The group was missing or the input was invalid
+        '404':
+          description: The named group was unknown
+        '500':
+          description: There was an internal error creating or updating the member
+
+    delete:
+      tags:
+        - subject
+      summary: Deprecates one member of the given group
+      operationId: deprecateMember
+      parameters:
+        - in: query
+          name: member
+          schema:
+            type: string
+          required: true
+          description: Name of a member
+      responses:
+        '200':
+          description: OK
+        '400':
+          description: Neither group nor member was provided as a query parameter, or there were multiple values for member
+        '500':
+          description: An internal error kept the member from being deprecated
+
+  /context/subjects:
+
+    parameters:
+      - in: query
+        name: subjectId
+        schema:
+          type: string
+        required: true
+        description: Identifier of a Subject
+
+    get:
+      tags:
+        - subject
+      summary: Returns the context for the named subject
+      operationId: getSubject
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: './subject_schema.yaml#/components/schemas/NamedSubject'
+              example:
+                subjectId: Patient/3
+                properties:
+                  state: Massachusetts
+                  dob: 08-27-2015
+                relationships:
+                  - targetId: Patient/2
+                    relationshipType: Parent
+        '400':
+          description: No subject was supplied
+        '404':
+          description: The requested subject was unknown
+        '500':
+          description: An internal error occured attempting to retrieve or return the subject's context
+
+    put:
+      tags:
+        - subject
+      summary: Provisions a new subject, or updates an existing subject
+      operationId: createOrUpdateSubject
+      requestBody:
+        description: Subject definition to create or update
+        required: true
+        content:
+          application/json:
+              schema:
+                $ref: './subject_schema.yaml#/components/schemas/Subject'
+              example:
+                properties:
+                  state: Massachusetts
+                  languages:
+                    - english
+                    - french
+                relationships:
+                  - targetId: BigCo
+                    relationshipType: employee
+                    properties:
+                      role: developer
+      responses:
+        '200':
+          description: OK
+        '400':
+          description: The subject was missing or the input was invalid
+        '404':
+          description: A policy named for a relationship was unknown
+        '500':
+          description: There was an internal error creating or updating the subject
+
+  /context/subjects/bulk:
+
+    post:
+      tags:
+        - subject
+      summary: Creates multiple subjects with one call
+      operationId: batchCreateSubjects
+      requestBody:
+        description: The subjects to create as a batch
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: './subject_schema.yaml#/components/schemas/NamedSubjectList'
+            example:
+              - subjectId: Patient/1
+              - subjectId: Patient/2
+                properties:
+                  state: massachusetts
+              - subjectId: Patient/3
+                relationships:
+                  - targetId: SomeCompany
+                    relationshipType: loyalty
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: './subject_schema.yaml#/components/schemas/SubjectBatchResponse'
+              example:
+                successCount: 2
+                errors:
+                  - offset: 1
+                    errorMsg: The subject Patient/2 already exists
+        '400':
+          description: The input was invalid
+        '500':
+          description: There was an error marshaling the response
+
+  /context/subjects/relationships:
+
+    parameters:
+      - in: query
+        name: subjectId
+        schema:
+          type: string
+        required: true
+        description: Identifier of a Subject
+        
+    get:
+      tags:
+        - subject
+      summary: Returns relationships of the given subject
+      description: >
+        If both targetId and type are omitted, then all relationships of the subject are returned. If exactly one value is provided for both
+        parameters, the the exact matching relationship is returned. If multiple, comma-separated, values are provided for one parameter
+        (e.g., type=friend,family) then all matching relationships are returned.
+      operationId: getRelationships
+      parameters:
+        - in: query
+          name: targetId
+          schema:
+            type: string
+          required: false
+          description: Identifier of a target
+        - in: query
+          name: type
+          schema:
+            type: string
+          required: false
+          description: Name of a relationship
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: './subject_schema.yaml#/components/schemas/NamedRelationshipList'
+              example:
+                - subjectId: Patient/3
+                  targetId: HealthCo
+                  relationshipType: provider
+                  properties:
+                    department: pediatrics
+                - subjectId: Patient/3
+                  targetId: PharmacyCo
+                  relationshipType: consent
+                  properties:
+                    categories:
+                      - prescriptions
+                      - alergies
+                      - conditions
+        '400':
+          description: The subject was missing or there were multiple values for both targetId and type parameters
+        '404':
+          description: The subject was unknown or there were no matching relationships
+        '500':
+          description: There was an internal error retreiving the subject or its relationships, or generating the response
+
+    put:
+      tags:
+        - subject
+      summary: Creates or updates a relationship of the given subject
+      operationId: createOrUpdateRelationship
+      requestBody:
+        description: Relationship content
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: './subject_schema.yaml#/components/schemas/Relationship'
+            example:
+              targetId: BillingApp
+              relationshipType: consent
+              properties:
+                categories:
+                  - encounters
+                  - prescriptions
+      responses:
+        '200':
+          description: OK
+        '400':
+          description: The subject was missing or the input was invalid
+        '404':
+          description: The identified subject was unknown
+        '500':
+          description: There was an internal error creating or updating the relationship
+
+    delete:
+      tags:
+        - subject
+      summary: Deprecates one or more relationships of the given subject
+      description: >
+        Follows the same query parameters rules as GET, with the exception that either targetId or type must be present with a value.
+      operationId: deprecateRelationship
+      parameters:
+        - in: query
+          name: targetId
+          schema:
+            type: string
+          required: false
+          description: Identifier of a target
+        - in: query
+          name: type
+          schema:
+            type: string
+          required: false
+          description: Name of a relationship
+      responses:
+        '200':
+          description: OK
+        '400':
+          description: Neither targetId nor type was provided as a query parameter, or there were multiple values for both targetId and type parameters
+        '500':
+          description: An internal error kept the relationship(s) from being deprecated
+
+  #
+  # Decision API paths
+  #
+
+  /decision/query:
+
+    get:
+      tags:
+        - decision
+      summary: Returns an entry point for the decision interface
+      description: >
+        This implements a required component of the "XACML REST Profile Version 1.1", providing
+        programmatic access to the entry point for issuing a standard decision query.
+      operationId: getDecisionEntryPoint
+      responses:
+        '200':
+          description: OK
+          content:
+            application/xml:
+              schema:
+                $ref: './decision_schema.yaml#/components/schemas/EntryPoint'
+            application/json:
+              schema:
+                $ref: './decision_schema.yaml#/components/schemas/EntryPoint'
+        '406':
+          description: The accepted media type is unsupported
+
+    post:
+      tags:
+        - decision
+      summary: Returns the decision from the given domain for the request
+      description: >
+        This implements a required component of the "XACML REST Profile Version 1.1", providing
+        an endpoint for requesting a decision based on provided input. See the specification for
+        both the supported input and output formats. The "scope" (from in the specification) must
+        be a valid domain name.
+      operationId: evaluateDecisionRequest
+      parameters:
+        - in: query
+          name: scope
+          schema:
+            type: string
+          required: false
+          description: The name of the root scope used to evaluate this request
+      requestBody:
+        description: Request to evaluate
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+          application/xml:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+            application/xml:
+              schema:
+                type: object
+        '400':
+          description: The request was invalid
+          content:
+            application/text:
+              schema:
+                type: string
+        '404':
+          description: The provided scope is unknown or no scope was provided and the server required one
+        '406':
+          description: Either the provided or requested content type is unsupported or the scope was malformed
+        '415':
+          description: Either the provided content type or the requested return type is unsupported

@@ -1,0 +1,98 @@
+components:
+
+  schemas:
+
+    PolicyXMLContent:
+      type: string
+
+    PolicyJSONContent:
+      type: object
+
+    PolicyDetails:
+      type: object
+      properties:
+        name:
+          type: string
+        entityVersion:
+          type: integer
+        contentType:
+          type: string
+        content:
+          oneOf:
+            - $ref: '#/components/schemas/PolicyXMLContent'
+            - $ref: '#/components/schemas/PolicyJSONContent'
+      required:
+        - name
+
+    PolicyList:
+      type: array
+      items:
+        $ref: '#/components/schemas/PolicyDetails'
+
+    ModelContent:
+      type: object
+
+    ModelDetails:
+      type: object
+      properties:
+        name:
+          type: string
+        entityVersion:
+          type: integer
+        contentType:
+          type: string
+        content:
+          $ref: '#/components/schemas/ModelContent'
+      required:
+        - name
+
+    ModelList:
+      type: array
+      items:
+        $ref: '#/components/schemas/ModelDetails'
+
+    PropertyMap:
+      type: object
+      additionalProperties:
+        type: string
+
+    PeerDetails:
+      type: object
+      properties:
+        identifier:
+          type: integer
+        certificate:
+          type: string
+        entityVersion:
+          type: integer
+        policyName:
+          type: string
+        properties:
+          $ref: '#/components/schemas/PropertyMap'
+      required:
+        - identifier
+        - certificate
+
+    PeerList:
+      type: array
+      items:
+        $ref: '#/components/schemas/PeerDetails'
+
+    DomainDetails:
+      type: object
+      properties:
+        name:
+          type: string
+        entityVersion:
+          type: integer
+        policyName:
+          type: string
+        modelName:
+          type: string
+      required:
+        - name
+
+    DomainList:
+      type: array
+      items:
+        $ref: '#/components/schemas/DomainDetails'

@@ -1,0 +1,41 @@
+components:
+
+  schemas:
+
+    DatastoreExportConfiguration:
+      type: object
+      additionalProperties: true
+
+    DatastoreExportDetails:
+      type: object
+      properties:
+        exportName:
+          type: string
+        datastoreType:
+          type: string
+        datastorePort:
+          type: integer
+        datastoreCertificate:
+          type: string
+        datastoreConfiguration:
+          $ref: '#/components/schemas/DatastoreExportConfiguration'
+      required:
+        - exportName
+        - datastoreType
+        - datastorePort
+
+    DatastoreExportList:
+      type: array
+      items:
+        type: object
+        properties:
+          domainName:
+            type: string
+          peerId:
+            type: integer
+          export:
+            $ref: '#/components/schemas/DatastoreExportDetails'
+        required:
+          - domainName
+          - peerId
+          - export

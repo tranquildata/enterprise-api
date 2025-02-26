@@ -1,0 +1,31 @@
+components:
+
+  schemas:
+
+    EntryPoint:
+      type: object
+      properties:
+        resources:
+          type: array
+          items:
+            type: object
+            properties:
+              type:
+                type: string
+                xml:
+                  attribute: true
+              link:
+                type: string
+                xml:
+                  attribute: true
+            required:
+              - type
+              - link
+            xml:
+              name: resource
+      xml:
+        name: resources
+      example:
+        resources:
+          - type: 'http://docs.oasis-open.org/xacml/ns/relation/pdp'
+            link: '/decision/query'
