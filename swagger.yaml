@@ -6,7 +6,7 @@ info:
   title: Tranquil Data (TM) Enterprise Edition APIs
   description: >
     This is the complete API for the engine. It covers routines for provisioning
-    entity state, managing subject context, exporting datastore access, and checking
+    entity state, managing subject context, exporting interfaces, and checking
     on the overall health of a service and its components.
 
     The syntax and attribute model for Entity Policies is defined in [policy documentation](https://tranquildata.github.io/enterprise-api/pdfdocs/policy-docs.pdf),
@@ -26,12 +26,14 @@ tags:
     description: Routines to query status and state for a specific peer.
   - name: entity
     description: Routines for operating on consensus-driven, durable Entity Context.
-  - name: datastore
-    description: Routines for managing non-durable datastore exports.
+  - name: export
+    description: Routines for managing non-durable exports.
   - name: subject
     description: Routines for operating on durable Subject Context.
   - name: decision
     description: Routines to request a decision about a given record or state of context.
+  - name: metrics
+    description: Routines to access Prometheus metrics.
 
 servers:
   - url: http://localhost
@@ -70,7 +72,8 @@ paths:
               example:
                 services:
                   - context
-                  - datastores
+                  - decision
+                  - export
                   - metrics
         '500':
           description: There is some internal error with the peer
@@ -559,16 +562,16 @@ paths:
           description: There was some internal failure to accept the policy
 
   #
-  # Datastore API paths
+  # Export API paths
   #
 
-  /datastore/exports:
+  /export:
   
     get:
       tags:
-        - datastore
-      summary: Returns information about active exported datastores
-      operationId: getExportedDatastores
+        - export
+      summary: Returns information about active exports
+      operationId: getExports
       parameters:
         - in: query
           name: domainName
@@ -594,7 +597,7 @@ paths:
             type: boolean
             default: false
           required: false
-          description: If true, includes configuration details for each datastore export
+          description: If true, includes configuration details for each export
       responses:
         '200':
           description: OK
@@ -607,7 +610,7 @@ paths:
                   peerId: 1
                   export:
                     exportName: 60960483-2F97-4F6E-A570-EFE0E373FA67
-                    datastoreType: postgres
+                    type: postgres
                     datastorePort: 5432
                     datastoreConfiguration:
                       endpoint: "example.com:6789"
@@ -635,9 +638,9 @@ paths:
 
     post:
       tags:
-        - datastore
-      summary: Exports the datastore identified in the configuration, from the named domain at the identified peer
-      operationId: exportDatastore
+        - export
+      summary: Requests the export defined by th configuration, from the named domain at the identified peer
+      operationId: export
       parameters:
         - in: query
           name: domainName
@@ -681,7 +684,7 @@ paths:
 
     delete:
       tags:
-        - datastore
+        - export
       summary: Revokes the named export, optionally validating the peer, domain, type and/or port
       operationId: revokeExport
       parameters:
@@ -1186,3 +1189,18 @@ paths:
           description: Either the provided or requested content type is unsupported or the scope was malformed
         '415':
           description: Either the provided content type or the requested return type is unsupported
+
+  #
+  # Metrics API paths
+  #
+
+  /metrics:
+
+    get:
+      tags:
+        - metrics
+      summary: Returns runtime metrics for the peer in the [Prometheus](https://prometheus.io/) format
+      operationId: getMetrics
+      responses:
+        '200':
+          description: OK
