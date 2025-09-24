@@ -30,6 +30,8 @@ tags:
     description: Routines for managing non-durable exports.
   - name: subject
     description: Routines for operating on durable Subject Context.
+  - name: computed
+    description: Routines to request Computed Queries over indexed context.
   - name: decision
     description: Routines to request a decision about a given record or state of context.
   - name: metrics
@@ -1112,6 +1114,52 @@ paths:
           description: Neither targetId nor type was provided as a query parameter, or there were multiple values for both targetId and type parameters
         '500':
           description: An internal error kept the relationship(s) from being deprecated
+
+  #
+  # Computed API paths
+  #
+
+  /computed:
+
+    get:
+      tags:
+        - computed
+      summary: Returns a computed query for the given variables and assertions.
+      description: >
+        When a peer is run using the `consume` command it will read the contents of the change data capture stream and write
+        an indexed data-set into a SQL database. This API call returns efficient queries over that SQL schema that are "computed"
+        based on the domain's policy to return only the data valid for a given set of constraints. A constraint might be a
+        specific purpose, a geographic region, a named contract, etc. The query provided is known to return identifiers for 
+        the records that would satisfy record-based policy evaluation. The `GET` form is provided as a purposefully simple
+        interface that takes a single variable for common, one-off use. The body of the response will contain either the full,
+        computed SQL query or an explaination of any error.
+      operationId: getComputedQuery
+      parameters:
+        - in: query
+          name: domain
+          schema:
+            type: string
+          required: true
+          description: The name of the domain where the query should be formed
+        - in: query
+          name: variableName
+          schema:
+            type: string
+          required: true
+          description: The name of variable to use in forming the query
+        - in: query
+          name: variableValue
+          schema:
+            type: string
+          required: true
+          description: The fixed value of the variable to use in forming the query 
+      responses:
+        '200':
+          description: OK
+        '400':
+          description: A required query parameter was missing or the requested Domain was unknown
+        '500':
+          description: An internal error resulted in a failure to compute the query
 
   #
   # Decision API paths
