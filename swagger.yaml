@@ -8,10 +8,6 @@ info:
     This is the complete API for the engine. It covers routines for provisioning
     entity state, managing subject context, exporting interfaces, and checking
     on the overall health of a service and its components.
-
-    The syntax and attribute model for Entity Policies is defined in [policy documentation](https://tranquildata.github.io/enterprise-api/pdfdocs/policy-docs.pdf),
-    along with the [context query documentation](https://tranquildata.github.io/enterprise-api/pdfdocs/query-docs.pdf). The syntax for Entity Models is defined in
-    [model documentation](https://tranquildata.github.io/enterprise-api/pdfdocs/model-docs.pdf)
   version: 1.0.1
   license:
     name: "Apache 2.0"
