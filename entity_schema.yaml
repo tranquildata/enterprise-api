@@ -96,3 +96,21 @@ components:
       type: array
       items:
         $ref: '#/components/schemas/DomainDetails'
+
+    SchemaJSONContent:
+      type: object
+
+    SchemaDetails:
+      type: object
+      properties:
+        entityVersion:
+          type: integer
+        contentType:
+          type: string
+        content:
+          oneOf:
+            - $ref: '#/components/schemas/SchemaJSONContent'
+      required:
+        - entityVersion
+        - contentType
+        

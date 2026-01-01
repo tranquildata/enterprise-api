@@ -559,6 +559,81 @@ paths:
         '500':
           description: There was some internal failure to accept the policy
 
+  /context/entity/schemas:
+
+    get:
+      tags:
+        - entity
+      summary: Returns the schema, optionally at some revision
+      description: >
+        There can only be one schema provisioned for the service at any moment in time, so this routine
+        returns the currently provisioned schema, or nothing is no schema is currently provisioned. By default,
+        the content is returned for the latest schema. Either the checkpoint or the entity version (bot not
+        both) may be provided to retrieve the schema at a specific revision.
+      operationId: getSchema
+      parameters:
+        - in: query
+          name: checkpoint
+          schema:
+            type: integer
+          required: false
+          description: Checkpoint to use in resolving the schema (by default the latest is used)
+        - in: query
+          name: entityVersion
+          schema:
+            type: integer
+          required: false
+          description: Specific entity version to resolve (by default the latest is used)
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: './entity_schema.yaml#/components/schemas/SchemaDetails'
+              example:
+                - entityVersion: 1
+                  contentType: application/json
+        '400':
+          description: A query parameter was invalid
+        '404':
+          description: There was no schema available at the requested checkpoint or entity version
+        '500':
+          description: There was some internal failure returning the schema
+
+    put:
+      tags:
+        - entity
+      summary: Creates or updates the service schema
+      operationId: upsertSchema
+      requestBody:
+        description: >
+          A valid Tranquil Data schema encoded according to content type.
+          Content type is required.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: './entity_schema.yaml#/components/schemas/SchemaJSONContent'
+      responses:
+        '200':
+          description: OK
+        '400':
+          description: The schema was invalid or content type did not match the schema
+        '500':
+          description: There was some internal failure to accept the policy
+
+    delete:
+      tags:
+        - entity
+      summary: Remove the current schema so no versions are available
+      operationId: removeSchema
+      responses:
+        '200':
+          description: OK
+        '500':
+          description: There was some internal failure to de-provision the schema
+
   #
   # Export API paths
   #

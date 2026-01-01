@@ -19,6 +19,8 @@ components:
           type: string
         relationshipType:
           type: string
+        definitionName:
+          type: string
         policyName:
           type: string
         properties:
@@ -50,6 +52,8 @@ components:
     Subject:
       type: object
       properties:
+        definitionName:
+          type: string
         properties:
           $ref: '#/components/schemas/PropertyMap'
         relationships:
@@ -95,6 +99,8 @@ components:
       properties:
         name:
           type: string
+        definitionName:
+          type: string
         properties:
           $ref: '#/components/schemas/PropertyMap'
       required:
@@ -123,6 +129,8 @@ components:
     Group:
       type: object
       properties:
+        definitionName:
+          type: string
         members:
           $ref: '#/components/schemas/MemberList'
         properties:
