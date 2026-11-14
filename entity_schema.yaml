@@ -8,6 +8,11 @@ components:
     PolicyJSONContent:
       type: object
 
+    EncodedContent:
+      type: string
+      format: byte
+      description: The content exactly as it was provisioned, base64-encoded
+
     PolicyDetails:
       type: object
       properties:
@@ -18,9 +23,7 @@ components:
         contentType:
           type: string
         content:
-          oneOf:
-            - $ref: '#/components/schemas/PolicyXMLContent'
-            - $ref: '#/components/schemas/PolicyJSONContent'
+          $ref: '#/components/schemas/EncodedContent'
       required:
         - name
 
@@ -42,7 +45,7 @@ components:
         contentType:
           type: string
         content:
-          $ref: '#/components/schemas/ModelContent'
+          $ref: '#/components/schemas/EncodedContent'
       required:
         - name
 
@@ -63,12 +66,18 @@ components:
           type: integer
         certificate:
           type: string
+          description: >
+            The PEM-encoded Public Key Certificate of the peer (before version 1.1.0 of this API,
+            the PEM was base64-encoded)
         entityVersion:
           type: integer
         policyName:
           type: string
+          description: Present only if details were requested
         properties:
-          $ref: '#/components/schemas/PropertyMap'
+          allOf:
+            - $ref: '#/components/schemas/PropertyMap'
+          description: Present only if details were requested
       required:
         - identifier
         - certificate
@@ -77,6 +86,36 @@ components:
       type: array
       items:
         $ref: '#/components/schemas/PeerDetails'
+
+    AddedPeer:
+      type: object
+      description: >
+        The identifier of the new peer, and the details that it needs to enter the service
+        through the peer that handled the request
+      properties:
+        identifier:
+          type: integer
+          description: The identifier of the new peer
+        entryIdentifier:
+          type: integer
+          description: The identifier of the peer that handled the request
+        entryHost:
+          type: string
+          description: The host of the peer that handled the request
+        entryPort:
+          type: integer
+          description: The port of the peer that handled the request
+        entryCertificate:
+          type: string
+          description: >
+            The PEM-encoded Public Key Certificate of the peer that handled the request (before
+            version 1.1.0 of this API, the PEM was base64-encoded)
+      required:
+        - identifier
+        - entryIdentifier
+        - entryHost
+        - entryPort
+        - entryCertificate
 
     DomainDetails:
       type: object
@@ -108,9 +147,28 @@ components:
         contentType:
           type: string
         content:
-          oneOf:
-            - $ref: '#/components/schemas/SchemaJSONContent'
+          $ref: '#/components/schemas/EncodedContent'
       required:
         - entityVersion
         - contentType
-        
+        - content
+
+    ResolverGroupJSONContent:
+      type: object
+
+    ResolverGroupDetails:
+      type: object
+      properties:
+        name:
+          type: string
+        entityVersion:
+          type: integer
+        contentType:
+          type: string
+        content:
+          $ref: '#/components/schemas/EncodedContent'
+      required:
+        - name
+        - entityVersion
+        - contentType
+        - content

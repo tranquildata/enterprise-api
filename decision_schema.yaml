@@ -29,3 +29,40 @@ components:
         resources:
           - type: 'http://docs.oasis-open.org/xacml/ns/relation/pdp'
             link: '/decision/query'
+
+    EvaluationResult:
+      type: object
+      properties:
+        result:
+          type: string
+          enum:
+            - Permit
+            - Deny
+            - Indeterminate
+            - NotApplicable
+          description: >
+            The decision for the record: `Permit` if policy was satisfied, `Deny` if policy
+            applied but was not satisfied, `Indeterminate` if evaluation failed, or
+            `NotApplicable` if no policy applied
+        messages:
+          type: array
+          items:
+            type: string
+          description: The summary messages returned by applicable policy, if any
+        error:
+          type: string
+          description: Why evaluation failed, present only for an `Indeterminate` result
+        categories:
+          type: array
+          items:
+            type: string
+          description: >
+            Present only when redaction was requested, the keys of the categories in the domain's
+            model that the record's fields map to
+      required:
+        - result
+
+    EvaluationResultList:
+      type: array
+      items:
+        $ref: '#/components/schemas/EvaluationResult'

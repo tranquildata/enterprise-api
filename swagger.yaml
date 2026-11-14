@@ -1,4 +1,4 @@
-# Copyright (c) 2022-2025, Tranquil Data, Inc. All rights reserved.
+# Copyright (c) 2022-2026, Tranquil Data, Inc. All rights reserved.
 
 openapi: 3.0.0
 
@@ -6,9 +6,24 @@ info:
   title: Tranquil Data (TM) Enterprise Edition APIs
   description: >
     This is the complete API for the engine. It covers routines for provisioning
-    entity state, managing subject context, exporting interfaces, and checking
-    on the overall health of a service and its components.
-  version: 1.0.1
+    entity state, managing subject context, exporting interfaces, evaluating records,
+    and checking on the overall health and configuration of a service and its components.
+
+
+    Every request may include an `Accept-Version` header naming the version of the API that
+    the caller expects. If the header is present it must be a valid semantic version, and the
+    only supported version is `1.1.0`. Version `1.0.0` is not supported, because this version
+    changed some requests and responses in ways that are not compatible. A request with an
+    invalid or unsupported version is rejected with a `400` response.
+
+
+    Changes to entity state (domains, models, peers, policies, resolver groups, and the schema)
+    are committed through consensus, and a successful response means that the change has been
+    committed. When a change is not committed, the response status says whether it can safely
+    be retried: a `409` or `503` response means the change had no effect, while a `504`
+    response means the change may still be committed, so the current state should be checked
+    before retrying.
+  version: 1.1.0
   license:
     name: "Apache 2.0"
     url: "http://www.apache.org/licenses/LICENSE-2.0.html"
@@ -19,7 +34,7 @@ externalDocs:
 
 tags:
   - name: root
-    description: Routines to query status and state for a specific peer.
+    description: Routines to query status, state, and configuration for a specific peer.
   - name: entity
     description: Routines for operating on consensus-driven, durable Entity Context.
   - name: export
@@ -52,13 +67,16 @@ paths:
       responses:
         '200':
           description: The peer is available and responsive
-        '500':
-          description: There is some internal error with the peer
+        '503':
+          description: The peer is running but is not healthy
 
     options:
       tags:
         - root
       summary: Returns the names of all services exposed by this peer
+      description: >
+        The `metrics` service is included only when metrics are served by the API, rather than
+        on their own port.
       operationId: getServices
       responses:
         '200':
@@ -69,12 +87,13 @@ paths:
                 $ref: './root_schema.yaml#/components/schemas/ServiceList'
               example:
                 services:
+                  - computed
+                  - config
                   - context
                   - decision
+                  - eval
                   - export
                   - metrics
-        '500':
-          description: There is some internal error with the peer
 
     get:
       tags:
@@ -89,10 +108,35 @@ paths:
               schema:
                 $ref: './root_schema.yaml#/components/schemas/PeerDetail'
               example:
-                identifier: 1
-                certificate: AAAAB3NzaC1yc2EAAAABIwAAAQEAq2A7hRGmdnm9tUDbO9IDSwBK6TbQa+PXYPCPy6rbTrTtw7PHkccKrpp0yVhp5HdEIcKr6pLlVDBfOLX9QUsyCOV0wzfjIJNlGEYsdlLJizHhbn2mUjvSAHQqZETYP81eFzLQNnPHt4EVVUh7VfDESU84KezmD5QlWpXLmvU31/yMf+Se8xhHTvKSCZIFImWwoG6mbUoWf9nzpIoaSjB+weqqUUmpaaasXVal72J+UX2B+2RPW3RcT0eOzQgqlJL3RKrTJvdsjE3JEAvGq3lGHSZXy28G3skua2SmVi/w4yCE6gbODqnTWlg7+wC604ydGXA8VJiS5ap43JXiUFFAaQ==
+                identifier: "1"
+                certificate: |
+                  -----BEGIN CERTIFICATE-----
+                  MIIBeTCCAR+gAwIBAgIBATAKBggqhkjOPQQDAjAAMB4XDTI2MDEwMTAwMDAwMFoX
+                  ...
+                  -----END CERTIFICATE-----
+
+  /config:
+
+    get:
+      tags:
+        - root
+      summary: Returns the product version and the configuration of the responding peer
+      operationId: getConfiguration
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: './root_schema.yaml#/components/schemas/Configuration'
+              example:
+                productEdition: Tranquil Data (TM) Context Engine
+                productVersion: "1.12.0"
+                configuration:
+                  apiPort: "8080"
+                  consensusWalLogDir: /var/lib/tranquil/peer-logs/consensus
         '500':
-          description: There is some internal error with the peer
+          description: The configuration could not be encoded
 
   #
   # Entity Context API paths
@@ -106,12 +150,12 @@ paths:
       summary: Returns all domains, or a specific domain, optionally at some revision
       description: >
         If no domain name is provided, then this function returns details of all
-        currently-provisioned domains. If a specific checkpoint is provided, then details are
-        returned for only the peers provisioned at that time. An entity version may not be specified
-        if a specific domain is not requested.
+        currently-provisioned domains, which is an empty list if there are none. If a specific
+        checkpoint is provided, then details are returned for only the domains provisioned at
+        that time. An entity version may not be specified if a specific domain is not requested.
 
         If a domain name is provided, then only details of that domain are returned. Either the
-        checkpoint or the entity version (bot not both) may be provided to retrieve the domain at a
+        checkpoint or the entity version (but not both) may be provided to retrieve the domain at a
         specific revision.
       operationId: getDomains
       parameters:
@@ -149,16 +193,14 @@ paths:
                   entityVersion: 3
                   policyName: CustomerReporting
         '400':
-          description: A query parameter was invalid, an entity version was given without an identified domain, or both an entity version and checkpoint were given
+          description: The domain name was not a valid URI, the checkpoint or entity version was not a number, an entity version was given without a named domain, or both an entity version and checkpoint were given
         '404':
-          description: The named domain or checkpoint or entity version was unknown
-        '500':
-          description: There was some internal failure resolving the requested domains
+          description: The named domain was unknown at the requested checkpoint or entity version
 
     put:
       tags:
         - entity
-      summary: Creates or updates the named domain, associating it with the policy named in the body of the message
+      summary: Creates or updates the named domain, associating it with the named policy and (optionally) model
       operationId: updateDomain
       parameters:
         - in: query
@@ -166,7 +208,7 @@ paths:
           schema:
             type: string
           required: true
-          description: The name of a specific domain to update
+          description: The name of a specific domain to create or update
         - in: query
           name: policyName
           schema:
@@ -183,11 +225,15 @@ paths:
         '200':
           description: OK
         '400':
-          description: The domain or policy name was missing or invalid, or the model name was invalid
-        '404':
-          description: The domain, policy, or model was unknown
+          description: The domain or policy name was missing or not a valid URI, the model name was not a valid URI, or the policy or model was unknown
+        '409':
+          $ref: '#/components/responses/EntityConflict'
         '500':
           description: There was some internal failure to update the domain
+        '503':
+          $ref: '#/components/responses/ConsensusUnavailable'
+        '504':
+          $ref: '#/components/responses/OutcomeUnknown'
 
   /context/entity/models:
 
@@ -201,9 +247,9 @@ paths:
         then the same detail is returned but only for the models provisioned at that time.
         An entity version may not be specified if a specific model is not requested.
 
-        If a name is provided, then only details of that model are returned. By default, the
-        content is returned for the named model. Either the checkpoint or the entity version
-        (bot not both) may be provided to retrieve the model at a specific revision.
+        If a name is provided, then only details of that model are returned. Either the checkpoint
+        or the entity version (but not both) may be provided to retrieve the model at a specific
+        revision. The content of a model is returned only if requested, and is base64-encoded.
       operationId: getModels
       parameters:
         - in: query
@@ -228,8 +274,9 @@ paths:
           name: includeContent
           schema:
             type: boolean
+            default: false
           required: false
-          description: If true, includes the content of the model or models 
+          description: If true, includes the content of the model or models
       responses:
         '200':
           description: OK
@@ -245,12 +292,10 @@ paths:
                   entityVersion: 2
                   contentType: application/json
         '400':
-          description: A query parameter was invalid, an entity version was given without a named model, or both an entity version and checkpoint were given
+          description: The model name was not a valid URI, the checkpoint or entity version was not a number, includeContent was not a boolean, an entity version was given without a named model, or both an entity version and checkpoint were given
         '404':
-          description: The named model or checkpoint or entity version was unknown
-        '500':
-          description: There was some internal failure resolving the requested models
-    
+          description: No models matched the request
+
     post:
       tags:
         - entity
@@ -258,8 +303,7 @@ paths:
       operationId: addModel
       requestBody:
         description: >
-          A valid Tranquil Data model encoded according to content type.
-          Content type is required.
+          A valid Tranquil Data model, which is named by its content.
         required: true
         content:
           application/json:
@@ -270,10 +314,16 @@ paths:
           description: OK
         '400':
           description: >
-            The model was invalid or a model with the same name already exists,
-            or content type did not match the model
+            The model was invalid, a model with the same name already exists, or the content type
+            was missing or unsupported
+        '409':
+          $ref: '#/components/responses/EntityConflict'
         '500':
           description: There was some internal failure to accept the model
+        '503':
+          $ref: '#/components/responses/ConsensusUnavailable'
+        '504':
+          $ref: '#/components/responses/OutcomeUnknown'
 
     put:
       tags:
@@ -282,8 +332,7 @@ paths:
       operationId: upsertModel
       requestBody:
         description: >
-          A valid Tranquil Data model encoded according to content type.
-          Content type is required.
+          A valid Tranquil Data model, which is named by its content.
         required: true
         content:
           application/json:
@@ -293,9 +342,109 @@ paths:
         '200':
           description: OK
         '400':
-          description: The model was invalid or content type did not match the model
+          description: The model was invalid, or the content type was missing or unsupported
+        '409':
+          $ref: '#/components/responses/EntityConflict'
         '500':
           description: There was some internal failure to accept the model
+        '503':
+          $ref: '#/components/responses/ConsensusUnavailable'
+        '504':
+          $ref: '#/components/responses/OutcomeUnknown'
+
+  /context/entity/models/groups:
+
+    get:
+      tags:
+        - entity
+      summary: Returns the named resolver group, optionally at some checkpoint
+      description: >
+        Resolver groups may be defined within a model, or provisioned on their own using these
+        routines. This returns a resolver group that was provisioned on its own, including its
+        base64-encoded content.
+      operationId: getResolverGroup
+      parameters:
+        - in: query
+          name: resolverGroupName
+          schema:
+            type: string
+          required: true
+          description: Name of the resolver group to retrieve
+        - in: query
+          name: checkpoint
+          schema:
+            type: integer
+          required: false
+          description: Checkpoint to use in resolving the group (by default the latest is used)
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: './entity_schema.yaml#/components/schemas/ResolverGroupDetails'
+              example:
+                name: ReportingResolvers
+                entityVersion: 2
+                contentType: application/json
+                content: eyJuYW1lIjoiUmVwb3J0aW5nUmVzb2x2ZXJzIn0=
+        '400':
+          description: The resolver group name was missing or the checkpoint was not a number
+        '404':
+          description: The resolver group was unknown at the requested checkpoint
+
+    put:
+      tags:
+        - entity
+      summary: Creates or updates a resolver group
+      operationId: upsertResolverGroup
+      requestBody:
+        description: >
+          A valid resolver group, which is named by its content.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: './entity_schema.yaml#/components/schemas/ResolverGroupJSONContent'
+      responses:
+        '200':
+          description: OK
+        '400':
+          description: The resolver group was invalid, or the content type was missing or unsupported
+        '409':
+          $ref: '#/components/responses/EntityConflict'
+        '500':
+          description: There was some internal failure to accept the resolver group
+        '503':
+          $ref: '#/components/responses/ConsensusUnavailable'
+        '504':
+          $ref: '#/components/responses/OutcomeUnknown'
+
+    delete:
+      tags:
+        - entity
+      summary: Removes the named resolver group
+      operationId: removeResolverGroup
+      parameters:
+        - in: query
+          name: resolverGroupName
+          schema:
+            type: string
+          required: true
+          description: Name of the resolver group to remove
+      responses:
+        '200':
+          description: OK
+        '400':
+          description: The resolver group name was missing
+        '409':
+          $ref: '#/components/responses/EntityConflict'
+        '500':
+          description: There was some internal failure to remove the resolver group
+        '503':
+          $ref: '#/components/responses/ConsensusUnavailable'
+        '504':
+          $ref: '#/components/responses/OutcomeUnknown'
 
   /context/entity/peers:
 
@@ -305,19 +454,22 @@ paths:
       summary: Returns all peers, or a specific peer, optionally at some revision
       description: >
         If no identifier is provided, then by default this function returns the identifier, public
-        key certificate, and entity version of all currently-provisioned peers. If a specific
-        checkpoint is provided, then the same detail is returned but only for the peers provisioned at
-        that time. An entity version may not be specified if a specific peer is not requested.
+        key certificate, and entity version of all currently-provisioned peers, which is an empty
+        list if there are none. If a specific checkpoint is provided, then the same detail is
+        returned but only for the peers provisioned at that time. An entity version may not be
+        specified if a specific peer is not requested.
 
-        If an identifier is provided, then only details of that peer are returned. By default, all
-        details about that peer are returned. Either the checkpoint or the entity version (bot not
-        both) may be provided to retrieve the peer at a specific revision.
+        If an identifier is provided, then only details of that peer are returned. Either the
+        checkpoint or the entity version (but not both) may be provided to retrieve the peer at a
+        specific revision. The policy and properties of each peer are returned only if details are
+        requested. Certificates are returned PEM-encoded.
       operationId: getPeers
       parameters:
         - in: query
           name: peerId
           schema:
             type: integer
+            minimum: 1
           required: false
           description: Identifier for a specific peer to retrieve
         - in: query
@@ -336,8 +488,9 @@ paths:
           name: includeDetails
           schema:
             type: boolean
+            default: false
           required: false
-          description: If true, includes all details of the peer or peers 
+          description: If true, includes the policy name and properties of the peer or peers
       responses:
         '200':
           description: OK
@@ -347,54 +500,88 @@ paths:
                 $ref: './entity_schema.yaml#/components/schemas/PeerList'
               example:
                 - identifier: 1
-                  certificate: AAAAB3NzaC1yc2EAAAABIwAAAQEAq2A7hRGmdnm9tUDbO9IDSwBK6TbQa+PXYPCPy6rbTrTtw7PHkccKrpp0yVhp5HdEIcKr6pLlVDBfOLX9QUsyCOV0wzfjIJNlGEYsdlLJizHhbn2mUjvSAHQqZETYP81eFzLQNnPHt4EVVUh7VfDESU84KezmD5QlWpXLmvU31/yMf+Se8xhHTvKSCZIFImWwoG6mbUoWf9nzpIoaSjB+weqqUUmpaaasXVal72J+UX2B+2RPW3RcT0eOzQgqlJL3RKrTJvdsjE3JEAvGq3lGHSZXy28G3skua2SmVi/w4yCE6gbODqnTWlg7+wC604ydGXA8VJiS5ap43JXiUFFAaQ==
+                  certificate: |
+                    -----BEGIN CERTIFICATE-----
+                    MIIBeTCCAR+gAwIBAgIBATAKBggqhkjOPQQDAjAAMB4XDTI2MDEwMTAwMDAwMFoX
+                    ...
+                    -----END CERTIFICATE-----
                   entityVersion: 2
                   policyName: AllPolicy
                   properties:
                     country: US
         '400':
-          description: A query parameter was invalid, an entity version was given without an identified peer, or both an entity version and checkpoint were given
+          description: The peer identifier, checkpoint, or entity version was not a number, the peer identifier was zero, includeDetails was not a boolean, an entity version was given without an identified peer, or both an entity version and checkpoint were given
         '404':
-          description: The identified peer or checkpoint or entity version was unknown
-        '500':
-          description: There was some internal failure resolving the requested peers
+          description: The identified peer was unknown at the requested checkpoint or entity version
 
     post:
       tags:
         - entity
-      summary: Provisions a new peer with the associated Public Key Certificate, returning the identifier for the new peer
+      summary: Provisions a new peer with the given Public Key Certificate
+      description: >
+        Each peer must have its own key pair. A certificate is refused if its public key is
+        already used by any peer, including a peer that has been removed. The response
+        identifies the new peer, and the peer that handled the request, which the new peer
+        may use to enter the service.
       operationId: addPeer
       requestBody:
-        description: A PEM-encoded Public Key Certificate
+        description: A PEM-encoded x.509 Public Key Certificate
         required: true
         content:
           text/plain:
             schema:
               type: string
-            example: AAAAB3NzaC1yc2EAAAABIwAAAQEAq2A7hRGmdnm9tUDbO9IDSwBK6TbQa+PXYPCPy6rbTrTtw7PHkccKrpp0yVhp5HdEIcKr6pLlVDBfOLX9QUsyCOV0wzfjIJNlGEYsdlLJizHhbn2mUjvSAHQqZETYP81eFzLQNnPHt4EVVUh7VfDESU84KezmD5QlWpXLmvU31/yMf+Se8xhHTvKSCZIFImWwoG6mbUoWf9nzpIoaSjB+weqqUUmpaaasXVal72J+UX2B+2RPW3RcT0eOzQgqlJL3RKrTJvdsjE3JEAvGq3lGHSZXy28G3skua2SmVi/w4yCE6gbODqnTWlg7+wC604ydGXA8VJiS5ap43JXiUFFAaQ==
+            example: |
+              -----BEGIN CERTIFICATE-----
+              MIIBeTCCAR+gAwIBAgIBATAKBggqhkjOPQQDAjAAMB4XDTI2MDEwMTAwMDAwMFoX
+              ...
+              -----END CERTIFICATE-----
       responses:
         '200':
           description: OK
           content:
-            text/plain:
+            application/json:
               schema:
-                type: integer
-              example: 1
+                $ref: './entity_schema.yaml#/components/schemas/AddedPeer'
+              example:
+                identifier: 3
+                entryIdentifier: 1
+                entryHost: peer1.example.com
+                entryPort: 9090
+                entryCertificate: |
+                  -----BEGIN CERTIFICATE-----
+                  MIIBeTCCAR+gAwIBAgIBATAKBggqhkjOPQQDAjAAMB4XDTI2MDEwMTAwMDAwMFoX
+                  ...
+                  -----END CERTIFICATE-----
         '400':
-          description: The Public Key Certificate was missing or invalid
+          description: The certificate could not be read, was missing, was not PEM-encoded, or was not a valid x.509 certificate
+        '409':
+          description: >
+            The certificate's public key is already used by an existing or removed peer, or the
+            change conflicted with the current entity state, so it had no effect
         '500':
           description: There was some internal failure to provision the peer
+        '503':
+          $ref: '#/components/responses/ConsensusUnavailable'
+        '504':
+          $ref: '#/components/responses/OutcomeUnknown'
 
     put:
       tags:
         - entity
       summary: Updates the associated policy, properties, or both for a given peer
+      description: >
+        A peer always has a policy, so if no policy name is given the peer keeps its current
+        policy. If properties are given they replace all of the peer's current properties, so an
+        empty object removes all of them, and if no body is given the peer keeps its current
+        properties.
       operationId: updatePeer
       parameters:
         - in: query
           name: peerId
           schema:
             type: integer
+            minimum: 1
           required: true
           description: Identifier for a specific peer to update
         - in: query
@@ -402,9 +589,9 @@ paths:
           schema:
             type: string
           required: false
-          description: The name of a policy for a peer to be associated with
+          description: The name of the policy for the peer to be associated with
       requestBody:
-        description: An optional set of properties to apply to the peer, where an empty value means that the named property should be removed 
+        description: The complete set of properties for the peer, replacing its current properties
         required: false
         content:
           application/json:
@@ -417,33 +604,49 @@ paths:
         '200':
           description: OK
         '400':
-          description: The peer identifier was missing or invalid or the policyName or properties were invalid
+          description: The peer identifier was missing or not a number, or the properties were not a JSON object of string values
         '404':
-          description: The identifier or the policyName was unknown
+          description: The identified peer or the named policy was unknown, or the peer was removed
+        '409':
+          $ref: '#/components/responses/EntityConflict'
         '500':
           description: There was some internal failure to update the peer
+        '503':
+          $ref: '#/components/responses/ConsensusUnavailable'
+        '504':
+          $ref: '#/components/responses/OutcomeUnknown'
 
     delete:
       tags:
         - entity
       summary: De-provisions the identified peer, shutting it down immediately if it is active
+      description: >
+        A removed peer's identifier is never re-used, and the public key in its certificate may
+        not be used by any new peer.
       operationId: removePeer
       parameters:
         - in: query
           name: peerId
           schema:
             type: integer
+            minimum: 1
           required: true
           description: Identifier for a specific peer to deprovision
       responses:
         '200':
           description: OK
         '400':
-          description: The peer identifier was missing or invalid
+          description: The peer identifier was missing or not a number
         '404':
-          description: The identifier was unknown
+          description: The identified peer was unknown
+        '409':
+          $ref: '#/components/responses/EntityConflict'
         '500':
           description: There was some internal failure to de-provision the peer
+        '503':
+          $ref: '#/components/responses/ConsensusUnavailable'
+        '504':
+          $ref: '#/components/responses/OutcomeUnknown'
 
   /context/entity/policies:
 
@@ -457,9 +660,9 @@ paths:
         then the same detail is returned but only for the policies provisioned at that time.
         An entity version may not be specified if a specific policy is not requested.
 
-        If a name is provided, then only details of that policy are returned. By default, the
-        content is returned for the named policy. Either the checkpoint or the entity version
-        (bot not both) may be provided to retrieve the policy at a specific revision.
+        If a name is provided, then only details of that policy are returned, and by default
+        its content is included. Either the checkpoint or the entity version (but not both) may
+        be provided to retrieve the policy at a specific revision. Content is base64-encoded.
       operationId: getPolicies
       parameters:
         - in: query
@@ -485,7 +688,9 @@ paths:
           schema:
             type: boolean
           required: false
-          description: If true, includes the content of the policy or policies 
+          description: >
+            If true, includes the content of the policy or policies. This defaults to true when a
+            policy is named, and false otherwise.
       responses:
         '200':
           description: OK
@@ -501,12 +706,10 @@ paths:
                   entityVersion: 2
                   contentType: application/json+xacml
         '400':
-          description: A query parameter was invalid, an entity version was given without a named policy, or both an entity version and checkpoint were given
+          description: The policy name was not a valid URI, the checkpoint or entity version was not a number, includeContent was not a boolean, an entity version was given without a named policy, or both an entity version and checkpoint were given
         '404':
-          description: The named policy or checkpoint or entity version was unknown
-        '500':
-          description: There was some internal failure resolving the requested policies
-    
+          description: No policies matched the request
+
     post:
       tags:
         - entity
@@ -514,8 +717,8 @@ paths:
       operationId: addPolicy
       requestBody:
         description: >
-          A valid Tranquil Data policy encoded according to content type.
-          Content type is required.
+          A valid Tranquil Data policy encoded according to the content type, which is named by
+          its content. The content type is required.
         required: true
         content:
           application/json+xacml:
@@ -529,10 +732,16 @@ paths:
           description: OK
         '400':
           description: >
-            The policy was invalid or a policy with the same name already exists,
-            or content type did not match the policy
+            The policy was invalid, a policy with the same name already exists, or the content
+            type was missing, unsupported, or did not match the policy
+        '409':
+          $ref: '#/components/responses/EntityConflict'
         '500':
           description: There was some internal failure to accept the policy
+        '503':
+          $ref: '#/components/responses/ConsensusUnavailable'
+        '504':
+          $ref: '#/components/responses/OutcomeUnknown'
 
     put:
       tags:
@@ -541,8 +750,8 @@ paths:
       operationId: upsertPolicy
       requestBody:
         description: >
-          A valid Tranquil Data policy encoded according to content type.
-          Content type is required.
+          A valid Tranquil Data policy encoded according to the content type, which is named by
+          its content. The content type is required.
         required: true
         content:
           application/json+xacml:
@@ -555,9 +764,15 @@ paths:
         '200':
           description: OK
         '400':
-          description: The policy was invalid or content type did not match the policy
+          description: The policy was invalid, or the content type was missing, unsupported, or did not match the policy
+        '409':
+          $ref: '#/components/responses/EntityConflict'
         '500':
           description: There was some internal failure to accept the policy
+        '503':
+          $ref: '#/components/responses/ConsensusUnavailable'
+        '504':
+          $ref: '#/components/responses/OutcomeUnknown'
 
   /context/entity/schemas:
 
@@ -566,10 +781,10 @@ paths:
         - entity
       summary: Returns the schema, optionally at some revision
       description: >
-        There can only be one schema provisioned for the service at any moment in time, so this routine
-        returns the currently provisioned schema, or nothing is no schema is currently provisioned. By default,
-        the content is returned for the latest schema. Either the checkpoint or the entity version (bot not
-        both) may be provided to retrieve the schema at a specific revision.
+        There can only be one schema provisioned for the service at any moment in time, so this
+        routine returns that schema, including its base64-encoded content. Either the checkpoint
+        or the entity version may be provided to retrieve the schema at a specific revision, and
+        if both are provided then the checkpoint is used.
       operationId: getSchema
       parameters:
         - in: query
@@ -592,14 +807,13 @@ paths:
               schema:
                 $ref: './entity_schema.yaml#/components/schemas/SchemaDetails'
               example:
-                - entityVersion: 1
-                  contentType: application/json
+                entityVersion: 1
+                contentType: application/json
+                content: eyJzdWJqZWN0cyI6W119
         '400':
-          description: A query parameter was invalid
+          description: The checkpoint or entity version was not a number
         '404':
-          description: There was no schema available at the requested checkpoint or entity version
-        '500':
-          description: There was some internal failure returning the schema
+          description: There was no schema available at the requested checkpoint or entity version, or no schema has been provisioned
 
     put:
       tags:
@@ -608,8 +822,7 @@ paths:
       operationId: upsertSchema
       requestBody:
         description: >
-          A valid Tranquil Data schema encoded according to content type.
-          Content type is required.
+          A valid Tranquil Data schema. The content type is required.
         required: true
         content:
           application/json:
@@ -619,27 +832,39 @@ paths:
         '200':
           description: OK
         '400':
-          description: The schema was invalid or content type did not match the schema
+          description: The schema was invalid, or the content type was missing or unsupported
+        '409':
+          $ref: '#/components/responses/EntityConflict'
         '500':
-          description: There was some internal failure to accept the policy
+          description: There was some internal failure to accept the schema
+        '503':
+          $ref: '#/components/responses/ConsensusUnavailable'
+        '504':
+          $ref: '#/components/responses/OutcomeUnknown'
 
     delete:
       tags:
         - entity
-      summary: Remove the current schema so no versions are available
+      summary: Removes the current schema so no versions are available
       operationId: removeSchema
       responses:
         '200':
           description: OK
+        '409':
+          $ref: '#/components/responses/EntityConflict'
         '500':
           description: There was some internal failure to de-provision the schema
+        '503':
+          $ref: '#/components/responses/ConsensusUnavailable'
+        '504':
+          $ref: '#/components/responses/OutcomeUnknown'
 
   #
   # Export API paths
   #
 
   /export:
-  
+
     get:
       tags:
         - export
@@ -651,7 +876,7 @@ paths:
           schema:
             type: string
           required: false
-          description: Return exports only in the named domain 
+          description: Return exports only in the named domain
         - in: query
           name: peerId
           schema:
@@ -683,14 +908,6 @@ paths:
                   peerId: 1
                   export:
                     exportName: 60960483-2F97-4F6E-A570-EFE0E373FA67
-                    type: postgres
-                    datastorePort: 5432
-                    datastoreConfiguration:
-                      endpoint: "example.com:6789"
-                - domainName: reporting
-                  peerId: 1
-                  export:
-                    exportName: 6229DEEF-8357-4268-896D-0416E31F5CA9
                     datastoreType: postgres
                     datastorePort: 5432
                     datastoreConfiguration:
@@ -701,18 +918,22 @@ paths:
                     exportName: 19063B4E-C12B-4E5E-8181-B99C841DD594
                     datastoreType: s3
                     datastorePort: 8080
-                    datastoreCertificate: AAAAB3NzaC1yc2EAAAABIwAAAQEAq2A7hRGmdnm9tUDbO9IDSwBK6TbQa+PXYPCPy6rbTrTtw7PHkccKrpp0yVhp5HdEIcKr6pLlVDBfOLX9QUsyCOV0wzfjIJNlGEYsdlLJizHhbn2mUjvSAHQqZETYP81eFzLQNnPHt4EVVUh7VfDESU84KezmD5QlWpXLmvU31/yMf+Se8xhHTvKSCZIFImWwoG6mbUoWf9nzpIoaSjB+weqqUUmpaaasXVal72J+UX2B+2RPW3RcT0eOzQgqlJL3RKrTJvdsjE3JEAvGq3lGHSZXy28G3skua2SmVi/w4yCE6gbODqnTWlg7+wC604ydGXA8VJiS5ap43JXiUFFAaQ==
+                    datastoreCertificate: |
+                      -----BEGIN CERTIFICATE-----
+                      MIIBeTCCAR+gAwIBAgIBATAKBggqhkjOPQQDAjAAMB4XDTI2MDEwMTAwMDAwMFoX
+                      ...
+                      -----END CERTIFICATE-----
                     datastoreConfiguration:
                       endpoint: "example.com:8080"
         '400':
-          description: A query parameter was mis-formatted
+          description: The peer identifier or includeConfiguration parameter was mis-formatted
         '404':
-          description: The domain, peer, or export is unknown
+          description: The domain or peer is unknown
 
     post:
       tags:
         - export
-      summary: Requests the export defined by th configuration, from the named domain at the identified peer
+      summary: Requests the export defined by the configuration, from the named domain at the identified peer
       operationId: export
       parameters:
         - in: query
@@ -726,17 +947,17 @@ paths:
           schema:
             type: integer
           required: true
-          description: Identifier of the peer where the datastore should be exported 
+          description: Identifier of the peer where the datastore should be exported
       requestBody:
         description: Datastore Configuration defining the export
         required: true
         content:
           application/json:
-              schema:
-                $ref: './datastore_schema.yaml#/components/schemas/DatastoreExportConfiguration'
-              example:
-                datastoreType: postgres
-                endpoint: "example.com:6789"
+            schema:
+              $ref: './datastore_schema.yaml#/components/schemas/DatastoreExportConfiguration'
+            example:
+              datastoreType: postgres
+              endpoint: "example.com:6789"
       responses:
         '200':
           description: OK
@@ -749,7 +970,7 @@ paths:
                 datastoreType: postgres
                 datastorePort: 5432
         '400':
-          description: The format of the peer identifier or the Datastore Configuration is invalid
+          description: The domain name or peer identifier was missing or invalid, or the Datastore Configuration was invalid
         '404':
           description: The identified peer or named domain is unknown
         '500':
@@ -758,7 +979,7 @@ paths:
     delete:
       tags:
         - export
-      summary: Revokes the named export, optionally validating the peer, domain, type and/or port
+      summary: Revokes the named export
       operationId: revokeExport
       parameters:
         - in: query
@@ -767,39 +988,48 @@ paths:
             type: string
           required: true
           description: Name of the export to revoke
-        - in: query
-          name: domainName
-          schema:
-            type: string
-          required: false
-          description: Expected domain that contains the named export 
-        - in: query
-          name: peerId
-          schema:
-            type: integer
-          required: false
-          description: Expected peer that is hosting the named export
-        - in: query
-          name: datastoreType
-          schema:
-            type: string
-          required: false
-          description: Expected type of the named export
-        - in: query
-          name: datastorePort
-          schema:
-            type: integer
-          required: false
-          description: Expected port exposed by the named export
       responses:
         '200':
           description: OK
         '400':
-          description: The name of the export is missing or the peerId and/or datastorePort parameters are invalid
-        '404':
-          description: The named export is unknown, or the domain, peer, type and/or port do not match the named export
+          description: The name of the export was missing or unknown
         '500':
           description: There was a failure to revoke the named export
+
+  /datastore/exports:
+
+    get:
+      tags:
+        - export
+      summary: Returns information about active exports
+      description: Deprecated, use `GET /export` which takes the same parameters.
+      deprecated: true
+      operationId: getDatastoreExports
+      responses:
+        '200':
+          description: OK, as for `GET /export`
+
+    post:
+      tags:
+        - export
+      summary: Requests the export defined by the configuration
+      description: Deprecated, use `POST /export` which takes the same parameters.
+      deprecated: true
+      operationId: datastoreExport
+      responses:
+        '200':
+          description: OK, as for `POST /export`
+
+    delete:
+      tags:
+        - export
+      summary: Revokes the named export
+      description: Deprecated, use `DELETE /export` which takes the same parameters.
+      deprecated: true
+      operationId: revokeDatastoreExport
+      responses:
+        '200':
+          description: OK, as for `DELETE /export`
 
   #
   # Subject Context API paths
@@ -813,7 +1043,7 @@ paths:
         schema:
           type: string
         required: true
-        description: Identifier of a Group
+        description: Name of a Group
 
     get:
       tags:
@@ -826,42 +1056,51 @@ paths:
           content:
             application/json:
               schema:
-                $ref: './subject_schema.yaml#/components/schemas/NamedGroup'
+                $ref: './subject_schema.yaml#/components/schemas/GroupDetails'
               example:
                 groupName: Providers
                 properties:
-                  state: Massachusetts
+                  state:
+                    - Massachusetts
                 members:
                   - name: HealthCo
+                    properties: {}
                   - name: HealthOrg
                     properties:
-                      pediatrics: true
+                      pediatrics:
+                        - true
         '400':
           description: No group was supplied
         '404':
           description: The requested group was unknown
         '500':
-          description: An internal error occured attempting to retrieve or return the group's context
+          description: An internal error occurred attempting to retrieve or return the group's context
 
     put:
       tags:
         - subject
       summary: Provisions a new group, or updates an existing group
+      description: >
+        Each property of the group and its members may be either a single value or an array
+        of values.
       operationId: createOrUpdateGroup
       requestBody:
         description: Group definition to create or update
         required: true
         content:
           application/json:
-              schema:
-                $ref: './subject_schema.yaml#/components/schemas/Group'
-              example:
-                properties:
-                  state: Massachusetts
-                members:
-                  - name: HealthCo
-                    properties:
-                      pediatrics: false
+            schema:
+              $ref: './subject_schema.yaml#/components/schemas/Group'
+            example:
+              properties:
+                state: Massachusetts
+                counties:
+                  - Middlesex
+                  - Suffolk
+              members:
+                - name: HealthCo
+                  properties:
+                    pediatrics: false
       responses:
         '200':
           description: OK
@@ -878,20 +1117,25 @@ paths:
         schema:
           type: string
         required: true
-        description: Identifier of a Subject
+        description: Name of a Group
 
     get:
       tags:
         - subject
       summary: Returns members of the given group
       description: >
-        Returns the matching member, or any matches if multiple comma-separated values are provided for `member`.
+        Returns the named members of the group. To request more than one member, repeat the
+        `member` parameter (e.g., `member=HealthCo&member=HealthOrg`).
       operationId: getMembers
       parameters:
         - in: query
           name: member
           schema:
-            type: string
+            type: array
+            items:
+              type: string
+          style: form
+          explode: true
           required: true
           description: Name of one or more members
       responses:
@@ -900,23 +1144,26 @@ paths:
           content:
             application/json:
               schema:
-                $ref: './subject_schema.yaml#/components/schemas/NamedMemberList'
+                $ref: './subject_schema.yaml#/components/schemas/MemberDetailsResponse'
               example:
-                - groupName: Providers
-                  name: HealthCo
-                  properties:
-                    pediatrics: false
+                members:
+                  - groupName: Providers
+                    name: HealthCo
+                    properties:
+                      pediatrics:
+                        - false
         '400':
           description: The group or member was missing
         '404':
           description: The group was unknown or there were no matching members
         '500':
-          description: There was an internal error retreiving the group or its members, or generating the response
+          description: There was an internal error retrieving the group or its members, or generating the response
 
     put:
       tags:
         - subject
       summary: Creates or updates a member of the given group
+      description: Each property may be either a single value or an array of values.
       operationId: createOrUpdateMember
       requestBody:
         description: Member content
@@ -955,7 +1202,9 @@ paths:
         '200':
           description: OK
         '400':
-          description: Neither group nor member was provided as a query parameter, or there were multiple values for member
+          description: The group or member was missing, or more than one member was given
+        '404':
+          description: The named group was unknown
         '500':
           description: An internal error kept the member from being deprecated
 
@@ -972,7 +1221,8 @@ paths:
     get:
       tags:
         - subject
-      summary: Returns the context for the named subject
+      summary: Returns the context for the identified subject
+      description: Each property value in the response is an array of values.
       operationId: getSubject
       responses:
         '200':
@@ -980,45 +1230,51 @@ paths:
           content:
             application/json:
               schema:
-                $ref: './subject_schema.yaml#/components/schemas/NamedSubject'
+                $ref: './subject_schema.yaml#/components/schemas/SubjectDetails'
               example:
                 subjectId: Patient/3
                 properties:
-                  state: Massachusetts
-                  dob: 08-27-2015
+                  state:
+                    - Massachusetts
+                  dob:
+                    - 08-27-2015
                 relationships:
                   - targetId: Patient/2
                     relationshipType: Parent
+                    properties: {}
         '400':
           description: No subject was supplied
         '404':
           description: The requested subject was unknown
         '500':
-          description: An internal error occured attempting to retrieve or return the subject's context
+          description: An internal error occurred attempting to retrieve or return the subject's context
 
     put:
       tags:
         - subject
       summary: Provisions a new subject, or updates an existing subject
+      description: >
+        Each property of the subject and its relationships may be either a single value or an
+        array of values. Any key other than those in the schema is rejected.
       operationId: createOrUpdateSubject
       requestBody:
         description: Subject definition to create or update
         required: true
         content:
           application/json:
-              schema:
-                $ref: './subject_schema.yaml#/components/schemas/Subject'
-              example:
-                properties:
-                  state: Massachusetts
-                  languages:
-                    - english
-                    - french
-                relationships:
-                  - targetId: BigCo
-                    relationshipType: employee
-                    properties:
-                      role: developer
+            schema:
+              $ref: './subject_schema.yaml#/components/schemas/Subject'
+            example:
+              properties:
+                state: Massachusetts
+                languages:
+                  - english
+                  - french
+              relationships:
+                - targetId: BigCo
+                  relationshipType: employee
+                  properties:
+                    role: developer
       responses:
         '200':
           description: OK
@@ -1034,10 +1290,14 @@ paths:
     post:
       tags:
         - subject
-      summary: Creates multiple subjects with one call
+      summary: Creates or updates multiple subjects with one call
+      description: >
+        Each subject is created or updated on its own, so a failure for one subject doesn't stop
+        the others. The response counts the subjects that succeeded, and gives the offset in the
+        request of each subject that failed.
       operationId: batchCreateSubjects
       requestBody:
-        description: The subjects to create as a batch
+        description: The subjects to create or update
         required: true
         content:
           application/json:
@@ -1063,7 +1323,7 @@ paths:
                 successCount: 2
                 errors:
                   - offset: 1
-                    errorMsg: The subject Patient/2 already exists
+                    errorMsg: unknown policy for the relationship
         '400':
           description: The input was invalid
         '500':
@@ -1078,56 +1338,66 @@ paths:
           type: string
         required: true
         description: Identifier of a Subject
-        
+
     get:
       tags:
         - subject
       summary: Returns relationships of the given subject
       description: >
-        If both targetId and type are omitted, then all relationships of the subject are returned. If exactly one value is provided for both
-        parameters, the the exact matching relationship is returned. If multiple, comma-separated, values are provided for one parameter
-        (e.g., type=friend,family) then all matching relationships are returned.
+        If both targetId and type are omitted, then all relationships of the subject are returned.
+        If exactly one value is provided for both parameters, then the exact matching relationship
+        is returned. To match more than one value, repeat a parameter (e.g., `type=friend&type=family`),
+        which returns all matching relationships. Only one of the parameters may be repeated.
       operationId: getRelationships
       parameters:
         - in: query
           name: targetId
           schema:
-            type: string
+            type: array
+            items:
+              type: string
+          style: form
+          explode: true
           required: false
-          description: Identifier of a target
+          description: Identifier of one or more targets
         - in: query
           name: type
           schema:
-            type: string
+            type: array
+            items:
+              type: string
+          style: form
+          explode: true
           required: false
-          description: Name of a relationship
+          description: Name of one or more relationship types
       responses:
         '200':
           description: OK
           content:
             application/json:
               schema:
-                $ref: './subject_schema.yaml#/components/schemas/NamedRelationshipList'
+                $ref: './subject_schema.yaml#/components/schemas/RelationshipDetailsList'
               example:
                 - subjectId: Patient/3
                   targetId: HealthCo
                   relationshipType: provider
                   properties:
-                    department: pediatrics
+                    department:
+                      - pediatrics
                 - subjectId: Patient/3
                   targetId: PharmacyCo
                   relationshipType: consent
                   properties:
                     categories:
                       - prescriptions
-                      - alergies
+                      - allergies
                       - conditions
         '400':
-          description: The subject was missing or there were multiple values for both targetId and type parameters
+          description: The subject was missing or both the targetId and type parameters were repeated
         '404':
-          description: The subject was unknown or there were no matching relationships
+          description: There were no matching relationships
         '500':
-          description: There was an internal error retreiving the subject or its relationships, or generating the response
+          description: There was an internal error retrieving the subject or its relationships, or generating the response
 
     put:
       tags:
@@ -1154,7 +1424,7 @@ paths:
         '400':
           description: The subject was missing or the input was invalid
         '404':
-          description: The identified subject was unknown
+          description: The policy named for the relationship was unknown
         '500':
           description: There was an internal error creating or updating the relationship
 
@@ -1163,26 +1433,35 @@ paths:
         - subject
       summary: Deprecates one or more relationships of the given subject
       description: >
-        Follows the same query parameters rules as GET, with the exception that either targetId or type must be present with a value.
+        Follows the same query parameter rules as GET, except that at least one targetId or
+        type must be provided.
       operationId: deprecateRelationship
       parameters:
         - in: query
           name: targetId
           schema:
-            type: string
+            type: array
+            items:
+              type: string
+          style: form
+          explode: true
           required: false
-          description: Identifier of a target
+          description: Identifier of one or more targets
         - in: query
           name: type
           schema:
-            type: string
+            type: array
+            items:
+              type: string
+          style: form
+          explode: true
           required: false
-          description: Name of a relationship
+          description: Name of one or more relationship types
       responses:
         '200':
           description: OK
         '400':
-          description: Neither targetId nor type was provided as a query parameter, or there were multiple values for both targetId and type parameters
+          description: The subject was missing, neither targetId nor type was provided, or both parameters were repeated
         '500':
           description: An internal error kept the relationship(s) from being deprecated
 
@@ -1200,10 +1479,10 @@ paths:
         When a peer is run using the `consume` command it will read the contents of the change data capture stream and write
         an indexed data-set into a SQL database. This API call returns efficient queries over that SQL schema that are "computed"
         based on the domain's policy to return only the data valid for a given set of constraints. A constraint might be a
-        specific purpose, a geographic region, a named contract, etc. The query provided is known to return identifiers for 
+        specific purpose, a geographic region, a named contract, etc. The query provided is known to return identifiers for
         the records that would satisfy record-based policy evaluation. The `GET` form is provided as a purposefully simple
         interface that takes a single variable for common, one-off use. The body of the response will contain either the full,
-        computed SQL query or an explaination of any error.
+        computed SQL query or an explanation of any error.
       operationId: getComputedQuery
       parameters:
         - in: query
@@ -1223,10 +1502,14 @@ paths:
           schema:
             type: string
           required: true
-          description: The fixed value of the variable to use in forming the query 
+          description: The fixed value of the variable to use in forming the query
       responses:
         '200':
           description: OK
+          content:
+            text/plain:
+              schema:
+                type: string
         '400':
           description: A required query parameter was missing or the requested Domain was unknown
         '500':
@@ -1258,6 +1541,8 @@ paths:
                 $ref: './decision_schema.yaml#/components/schemas/EntryPoint'
         '406':
           description: The accepted media type is unsupported
+        '500':
+          description: The entry point could not be encoded
 
     post:
       tags:
@@ -1266,7 +1551,7 @@ paths:
       description: >
         This implements a required component of the "XACML REST Profile Version 1.1", providing
         an endpoint for requesting a decision based on provided input. See the specification for
-        both the supported input and output formats. The "scope" (from in the specification) must
+        both the supported input and output formats. The "scope" (from the specification) must
         be a valid domain name.
       operationId: evaluateDecisionRequest
       parameters:
@@ -1299,15 +1584,118 @@ paths:
         '400':
           description: The request was invalid
           content:
-            application/text:
+            text/plain:
               schema:
                 type: string
         '404':
           description: The provided scope is unknown or no scope was provided and the server required one
         '406':
-          description: Either the provided or requested content type is unsupported or the scope was malformed
+          description: The provided or requested content type is unsupported, or the scope was malformed
+        '500':
+          description: The decision could not be evaluated or encoded
+
+  /eval:
+
+    put:
+      tags:
+        - decision
+      summary: Evaluates records in a domain, returning the decision for each record
+      description: >
+        Evaluates each record in the body as if it were being written, using the domain's policy
+        and model, and returns the decision for each record in the same order as the records in
+        the body. If a record exists it's evaluated as an update, and otherwise as a create, so
+        this answers the question "what happens if I introduce this record?" Evaluation is
+        logged as usual, but no record context is kept, so this may be used to ask hypothetical
+        questions, to check what redaction would leave of a record, or to check whether actions
+        are in-policy.
+
+
+        The body may be in any format supported by exports: JSON (including JSON lines), CSV,
+        XML, or FHIR (JSON or XML), as given by the `Content-Type` header.
+
+
+        Assertions for the evaluation, such as the subject or purpose, are given as headers named
+        `X-TQD-Assertion-<name>` (e.g., `X-TQD-Assertion-Purpose: research`), where the name is
+        case-insensitive. The legacy `X-TQD-Meta-<name>` form is deprecated, but is still
+        accepted, and if both forms are given for an assertion then the `X-TQD-Assertion-` value
+        is used. The caller's credentials are not used as assertions, since they don't represent
+        the question being asked.
+      operationId: evaluateRecords
+      parameters:
+        - in: query
+          name: domain
+          schema:
+            type: string
+          required: true
+          description: The name of the domain where the records are evaluated
+        - in: query
+          name: resolverGroup
+          schema:
+            type: string
+          required: false
+          description: The name of the resolver group to use (by default the model's default group is used)
+        - in: query
+          name: redact
+          schema:
+            type: boolean
+            default: false
+          required: false
+          description: >
+            If true, records are evaluated for redaction, and each result includes the categories
+            of the record's fields
+        - in: header
+          name: X-TQD-Assertion-Subject
+          schema:
+            type: string
+          required: false
+          description: >
+            An example of an assertion header, which asserts the subject of the evaluation. Any
+            assertion may be given using the same `X-TQD-Assertion-` prefix.
+      requestBody:
+        description: The records to evaluate
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+            example:
+              id: 1
+              name: Alice
+              diagnosis: asthma
+          text/csv:
+            schema:
+              type: string
+          application/xml:
+            schema:
+              type: string
+          application/fhir+json:
+            schema:
+              type: object
+          application/fhir+xml:
+            schema:
+              type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: './decision_schema.yaml#/components/schemas/EvaluationResultList'
+              example:
+                - result: Permit
+                  messages:
+                    - allowed for treatment
+                - result: Deny
+                  messages:
+                    - no consent for research
+        '400':
+          description: >
+            The domain was missing or unknown, the resolver group was unknown, the redact parameter
+            was not a boolean, or the records could not be parsed or evaluated
         '415':
-          description: Either the provided content type or the requested return type is unsupported
+          description: The content type was missing or unsupported
+        '500':
+          description: The records could not be read
 
   #
   # Metrics API paths
@@ -1319,7 +1707,29 @@ paths:
       tags:
         - metrics
       summary: Returns runtime metrics for the peer in the [Prometheus](https://prometheus.io/) format
+      description: >
+        Metrics are served by the API only when they aren't configured to be served on their
+        own port.
       operationId: getMetrics
       responses:
         '200':
           description: OK
+
+components:
+
+  responses:
+
+    EntityConflict:
+      description: >
+        The change conflicted with the current entity state, so it had no effect. It may be
+        retried after checking the current state.
+
+    ConsensusUnavailable:
+      description: >
+        The change could not be proposed because consensus is unavailable, so it had no effect.
+        It may be retried later.
+
+    OutcomeUnknown:
+      description: >
+        The change was proposed, but was not committed before the request timed out, so it may
+        still be committed. Check the current state before retrying.

@@ -3,14 +3,30 @@ components:
 
   schemas:
 
+    PropertyValue:
+      oneOf:
+        - type: string
+        - type: number
+        - type: boolean
+
     PropertyMap:
       type: object
+      description: >
+        Properties in a request, where each property has either a single value or an array of
+        values
       additionalProperties:
         oneOf:
-          - type: string
+          - $ref: '#/components/schemas/PropertyValue'
           - type: array
             items:
-              type: string
+              $ref: '#/components/schemas/PropertyValue'
+
+    PropertyValuesMap:
+      type: object
+      description: Properties where each value is an array of values
+      additionalProperties:
+        type: array
+        items: {}
 
     Relationship:
       type: object
@@ -28,26 +44,37 @@ components:
       required:
         - targetId
         - relationshipType
+      additionalProperties: false
 
     RelationshipList:
       type: array
       items:
         $ref: '#/components/schemas/Relationship'
 
-    NamedRelationship:
-      allOf:
-        - type: object
-          properties:
-            subjectId:
-              type: string
-          required:
-            - subjectId
-        - $ref: '#/components/schemas/Relationship'
+    RelationshipDetails:
+      type: object
+      properties:
+        subjectId:
+          type: string
+        targetId:
+          type: string
+        relationshipType:
+          type: string
+        definitionName:
+          type: string
+        policyName:
+          type: string
+        properties:
+          $ref: '#/components/schemas/PropertyValuesMap'
+      required:
+        - targetId
+        - relationshipType
+        - properties
 
-    NamedRelationshipList:
+    RelationshipDetailsList:
       type: array
       items:
-        $ref: '#/components/schemas/NamedRelationship'
+        $ref: '#/components/schemas/RelationshipDetails'
 
     Subject:
       type: object
@@ -58,21 +85,43 @@ components:
           $ref: '#/components/schemas/PropertyMap'
         relationships:
           $ref: '#/components/schemas/RelationshipList'
+      additionalProperties: false
 
     NamedSubject:
-      allOf:
-        - type: object
-          properties:
-            subjectId:
-              type: string
-          required:
-            - subjectId
-        - $ref: '#/components/schemas/Subject'
+      type: object
+      properties:
+        subjectId:
+          type: string
+        definitionName:
+          type: string
+        properties:
+          $ref: '#/components/schemas/PropertyMap'
+        relationships:
+          $ref: '#/components/schemas/RelationshipList'
+      required:
+        - subjectId
+      additionalProperties: false
 
     NamedSubjectList:
       type: array
       items:
         $ref: '#/components/schemas/NamedSubject'
+
+    SubjectDetails:
+      type: object
+      properties:
+        subjectId:
+          type: string
+        definitionName:
+          type: string
+        properties:
+          $ref: '#/components/schemas/PropertyValuesMap'
+        relationships:
+          $ref: '#/components/schemas/RelationshipDetailsList'
+      required:
+        - subjectId
+        - properties
+        - relationships
 
     SubjectBatchResponse:
       type: object
@@ -93,6 +142,7 @@ components:
               - errorMsg
       required:
         - successCount
+        - errors
 
     Member:
       type: object
@@ -111,20 +161,30 @@ components:
       items:
         $ref: '#/components/schemas/Member'
 
-    NamedMember:
-      allOf:
-        - type: object
-          properties:
-            groupName:
-              type: string
-          required:
-            - groupName
-        - $ref: '#/components/schemas/Member'
+    MemberDetails:
+      type: object
+      properties:
+        groupName:
+          type: string
+        name:
+          type: string
+        definitionName:
+          type: string
+        properties:
+          $ref: '#/components/schemas/PropertyValuesMap'
+      required:
+        - name
+        - properties
 
-    NamedMemberList:
-      type: array
-      items:
-        $ref: '#/components/schemas/NamedMember'
+    MemberDetailsResponse:
+      type: object
+      properties:
+        members:
+          type: array
+          items:
+            $ref: '#/components/schemas/MemberDetails'
+      required:
+        - members
 
     Group:
       type: object
@@ -136,12 +196,20 @@ components:
         properties:
           $ref: '#/components/schemas/PropertyMap'
 
-    NamedGroup:
-      allOf:
-        - type: object
-          properties:
-            groupName:
-              type: string
-          required:
-            - groupName
-        - $ref: '#/components/schemas/Group'
+    GroupDetails:
+      type: object
+      properties:
+        groupName:
+          type: string
+        definitionName:
+          type: string
+        members:
+          type: array
+          items:
+            $ref: '#/components/schemas/MemberDetails'
+        properties:
+          $ref: '#/components/schemas/PropertyValuesMap'
+      required:
+        - groupName
+        - members
+        - properties

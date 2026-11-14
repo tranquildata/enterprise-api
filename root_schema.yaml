@@ -16,9 +16,33 @@ components:
       type: object
       properties:
         identifier:
-          type: integer
+          type: string
+          description: The identifier of the responding peer, encoded as a decimal string
         certificate:
           type: string
+          description: >
+            The PEM-encoded Public Key Certificate of the responding peer, which is omitted if
+            the peer is not (or not yet) provisioned
       required:
         - identifier
-        - certificate
+
+    Configuration:
+      type: object
+      properties:
+        productEdition:
+          type: string
+          description: The edition of the product that the peer is running
+        productVersion:
+          type: string
+          description: The build of the product that the peer is running
+        configuration:
+          type: object
+          description: >
+            Every visible configuration property loaded by the peer, mapping each property name
+            to its value. Hidden properties, such as secrets, are not included.
+          additionalProperties:
+            type: string
+      required:
+        - productEdition
+        - productVersion
+        - configuration

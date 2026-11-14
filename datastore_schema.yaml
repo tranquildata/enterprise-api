@@ -17,6 +17,9 @@ components:
           type: integer
         datastoreCertificate:
           type: string
+          description: >
+            The PEM-encoded Public Key Certificate of the export, present only if the export has
+            its own identity
         datastoreConfiguration:
           $ref: '#/components/schemas/DatastoreExportConfiguration'
       required:
