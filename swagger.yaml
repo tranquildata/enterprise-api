@@ -12,8 +12,7 @@ info:
 
     Every request may include an `Accept-Version` header naming the version of the API that
     the caller expects. If the header is present it must be a valid semantic version, and the
-    only supported version is `1.1.0`. Version `1.0.0` is not supported, because this version
-    changed some requests and responses in ways that are not compatible. A request with an
+    only supported version is `1.1.0`. Version `1.0.0` is no longer supported. A request with an
     invalid or unsupported version is rejected with a `400` response.
 
 
@@ -91,7 +90,6 @@ paths:
                   - config
                   - context
                   - decision
-                  - eval
                   - export
                   - metrics
 
@@ -1594,7 +1592,7 @@ paths:
         '500':
           description: The decision could not be evaluated or encoded
 
-  /eval:
+  /decision/eval:
 
     put:
       tags:
